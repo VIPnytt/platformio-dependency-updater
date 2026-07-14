@@ -1,0 +1,15 @@
+bug:
+  - head-branch:
+    - ^fix/
+
+chore:
+  - head-branch:
+    - ^chore/
+
+documentation:
+  - head-branch:
+    - ^docs/
+
+enhancement:
+  - head-branch:
+    - ^feat/

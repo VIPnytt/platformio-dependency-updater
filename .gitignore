@@ -1,0 +1,6 @@
+__pycache__
+/.pio
+/.platformio
+/.platformio.ini
+/.venv
+/.vscode

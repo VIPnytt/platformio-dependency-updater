@@ -1,0 +1,23 @@
+name: End of life
+
+on:
+  schedule:
+    - cron: 24 7 31 * *
+
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  python:
+    name: Python
+    runs-on: ubuntu-slim
+
+    steps:
+      - name: End-of-Life
+        uses: sindrel/endoflife-github-action@5f91adaabc542a346876290ff0f447c7bc355f99 # v1.0.3
+        with:
+          fail_on_eol: true
+          product: python
+          version: 3.12

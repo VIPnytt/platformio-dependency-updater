@@ -1,0 +1,20 @@
+name: PlatformIO Dependency Updater
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  platformio:
+    name: PlatformIO Dependency Updater
+    runs-on: ubuntu-slim
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      - name: Check for dependency updates
+        uses: ./
