@@ -16,7 +16,7 @@ import src.Models as Models
 import src.providers.PlatformIO as PlatformIO
 
 
-class Dependabot:
+class Piobot:
     dependencies: list[Models.Dependency]
     ref: str
     repository: str
@@ -259,7 +259,7 @@ class Dependabot:
 
 
 def main() -> int:
-    return Dependabot().check()
+    return Piobot().check()
 
 
 if __name__ == "__main__":

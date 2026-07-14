@@ -15,6 +15,6 @@ runs:
 
     - name: Check for dependency updates
       shell: bash
-      run: uv run --no-dev -m src.Dependabot
+      run: uv run --no-dev -m src.Piobot
       env:
         GITHUB_TOKEN: ${{ github.token }}
