@@ -252,7 +252,7 @@ wheels = [
 [[package]]
 name = "piobot"
 version = "1.0.0a1"
-source = { virtual = "." }
+source = { editable = "." }
 dependencies = [
     { name = "gitpython" },
     { name = "packaging" },
