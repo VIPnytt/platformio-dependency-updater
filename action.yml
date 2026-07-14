@@ -11,10 +11,11 @@ runs:
     - name: Set up uv
       uses: astral-sh/setup-uv@11f9893b081a58869d3b5fccaea48c9e9e46f990 # v8.3.2
       with:
-        version-file: pyproject.toml
+        version-file: ${{ github.action_path }}/pyproject.toml
 
     - name: Check for dependency updates
       shell: bash
-      run: uv run --no-dev -m src.Piobot
+      run: uv run --no-dev --project "$GITHUB_ACTION_PATH" -m piobot
       env:
+        GITHUB_ACTION_PATH: ${{ github.action_path }}
         GITHUB_TOKEN: ${{ github.token }}

@@ -77,3 +77,7 @@ lib_deps =
 The same applies to other dependency formats where the version cannot be directly extracted from the URL.
 
 If a dependency cannot be resolved, it will be reported as an unresolved dependency in the workflow summary. This usually indicates that a version comment is required or that the dependency format is not currently supported.
+
+### Pull request does not appear
+
+Go to the repository's **Settings** > **Actions** > **General** and ensure that GitHub Actions has permission to create pull requests. The workflow also needs to have `contents: write` and `pull-requests: write` permissions.

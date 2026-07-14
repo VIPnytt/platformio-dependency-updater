@@ -4,7 +4,7 @@ import re
 import requests
 import typing
 
-import src.Models as Models
+from .. import Models
 
 
 class Commit(typing.TypedDict):

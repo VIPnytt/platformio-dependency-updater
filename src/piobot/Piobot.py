@@ -1,5 +1,3 @@
-# PlatformIO dependabot
-
 import datetime
 import fileinput
 import git
@@ -8,12 +6,12 @@ import os
 import sys
 import typing
 
-import src.providers.Arduino as Arduino
-import src.providers.Bitbucket as Bitbucket
-import src.providers.GitHub as GitHub
-import src.providers.GitLab as GitLab
-import src.Models as Models
-import src.providers.PlatformIO as PlatformIO
+from . import Models
+from .providers import Arduino
+from .providers import Bitbucket
+from .providers import GitHub
+from .providers import GitLab
+from .providers import PlatformIO
 
 
 class Piobot:
@@ -256,11 +254,3 @@ class Piobot:
             print(
                 f"::error file={Models.Config.FILE},line={dependency.line},title=Unresolved::{dependency.option} = {dependency.value.split(';', 1)[0].rstrip()}"
             )
-
-
-def main() -> int:
-    return Piobot().check()
-
-
-if __name__ == "__main__":
-    raise SystemExit(main())

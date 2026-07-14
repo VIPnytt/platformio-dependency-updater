@@ -1,6 +1,7 @@
-__pycache__
+*.egg-info
 /.pio
 /.platformio
 /.platformio.ini
 /.venv
 /.vscode
+__pycache__

@@ -15,4 +15,12 @@ dependencies = [
 [dependency-groups]
 dev = ["ruff==0.15.21", "uv==0.11.28"]
 
-[tool.ruff]
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.uv]
+package = true

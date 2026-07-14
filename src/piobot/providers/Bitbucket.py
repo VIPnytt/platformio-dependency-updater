@@ -5,7 +5,7 @@ import requests
 import typing
 import urllib.parse
 
-import src.Models as Models
+from .. import Models
 
 
 class User(typing.TypedDict):
