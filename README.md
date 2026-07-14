@@ -80,4 +80,4 @@ If a dependency cannot be resolved, it will be reported as an unresolved depende
 
 ### Pull request does not appear
 
-Go to the repository's **Settings** > **Actions** > **General** and ensure that GitHub Actions has permission to create pull requests. The workflow also needs have `contents: write` and `pull-requests: write` permissions.
+Go to the repository's **Settings** > **Actions** > **General** and ensure that GitHub Actions has permission to create pull requests. The workflow also needs to have `contents: write` and `pull-requests: write` permissions.

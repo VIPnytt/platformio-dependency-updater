@@ -14,14 +14,14 @@ class Option(enum.StrEnum):
     PLATFORM_PACKAGES = "platform_packages"
 
 
-@dataclasses.dataclass
+@dataclasses.dataclass(frozen=True)
 class Dependency:
     line: int
     option: Option
     value: str
 
 
-@dataclasses.dataclass
+@dataclasses.dataclass(frozen=True)
 class Result:
     body: str
     package: str
