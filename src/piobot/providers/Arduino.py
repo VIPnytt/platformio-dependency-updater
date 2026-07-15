@@ -47,11 +47,11 @@ class Resolve:
     def library(self, dependency: Models.Dependency) -> Models.Result | str | None:
         match = typing.cast(Match | None, self._libraries.fullmatch(dependency.value))
         if not match:
-            return
+            return None
         version = packaging.version.Version(match["version"])
         library = self._parse(match["name"], version)
         if library is None:
-            return
+            return None
         value = f"{'' if match['package'] is None else f'{match["package"]} @ '}{library['url']} ; {library['version']}"
         return (
             Models.Result(
