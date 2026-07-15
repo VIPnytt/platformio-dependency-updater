@@ -1,10 +1,12 @@
 import dataclasses
 import enum
+import github.Consts
 
 
 @dataclasses.dataclass(frozen=True)
 class Config:
     FILE: str = "platformio.ini"
+    TIMEOUT: int = github.Consts.DEFAULT_TIMEOUT
     USER_AGENT: str = "platformio-dependency-updater (+https://github.com/VIPnytt/platformio-dependency-updater)"
 
 

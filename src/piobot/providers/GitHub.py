@@ -103,18 +103,15 @@ class Resolve:
             MatchCommit | None, self._git_commit.fullmatch(dependency.value)
         )
         if not match:
-            return
-        version = packaging.version.Version(match["tag"])
-        release = self._request_release(
-            match["name"], match["tag"], version.is_prerelease
-        )
+            return None
+        release = self._request_release(match["name"], match["tag"])
         if not release:
-            return
+            return None
         owner, repo = self._parse_link(release["url"])
         commit = self._request_tag_id(owner, repo, release["tag_name"])["object"]["sha"]
         value = f"{'' if match['package'] is None else f'{match["package"]} @ '}{match['variant']}://github.com/{owner}/{repo}.git#{commit} ; {release['tag_name']}"
-        if packaging.version.Version(release["tag_name"]) > version:
-            return Models.Result(
+        return (
+            Models.Result(
                 body="\n".join(
                     [
                         f"Bumps [{owner}/{repo}](https://github.com/{owner}/{repo}) from {match['tag']} to {release['tag_name']}.",
@@ -127,7 +124,10 @@ class Resolve:
                 version_from=match["tag"].removeprefix("v"),
                 version_to=release["tag_name"].removeprefix("v"),
             )
-        return f"{dependency.option} = {value}"
+            if packaging.version.Version(release["tag_name"])
+            > packaging.version.Version(match["tag"])
+            else f"{dependency.option} = {value}"
+        )
 
     def release_tag_archive(
         self, dependency: Models.Dependency
@@ -136,17 +136,14 @@ class Resolve:
             MatchTag | None, self._archive_tag.fullmatch(dependency.value)
         )
         if not match:
-            return
-        version = packaging.version.Version(match["tag"])
-        release = self._request_release(
-            match["name"], match["tag"], version.is_prerelease
-        )
+            return None
+        release = self._request_release(match["name"], match["tag"])
         if not release:
-            return
+            return None
         owner, repo = self._parse_link(release["url"])
         value = f"{'' if match['package'] is None else f'{match["package"]} @ '}https://github.com/{owner}/{repo}/archive/refs/tags/{release['tag_name']}.{match['variant']} ; {release['tag_name']}"
-        if packaging.version.Version(release["tag_name"]) > version:
-            return Models.Result(
+        return (
+            Models.Result(
                 body="\n".join(
                     [
                         f"Bumps [{owner}/{repo}](https://github.com/{owner}/{repo}) from {match['tag']} to {release['tag_name']}.",
@@ -159,7 +156,10 @@ class Resolve:
                 version_from=match["tag"].removeprefix("v"),
                 version_to=release["tag_name"].removeprefix("v"),
             )
-        return f"{dependency.option} = {value}"
+            if packaging.version.Version(release["tag_name"])
+            > packaging.version.Version(match["tag"])
+            else f"{dependency.option} = {value}"
+        )
 
     def release_tag_asset(
         self, dependency: Models.Dependency
@@ -168,54 +168,53 @@ class Resolve:
             MatchDownload | None, self._download.fullmatch(dependency.value)
         )
         if not match:
-            return
-        version = packaging.version.Version(match["tag"])
-        release = self._request_release(
-            match["name"], match["tag"], version.is_prerelease
-        )
+            return None
+        release = self._request_release(match["name"], match["tag"])
         if not release:
-            return
-        assets = {
+            return None
+        names = {
             match["asset"],
             match["asset"].replace(match["tag"], release["tag_name"]),
         }
         for asset in release["assets"]:
-            if asset["name"] in assets:
-                owner, repo = self._parse_link(release["url"])
-                value = f"{'' if match['package'] is None else f'{match["package"]} @ '}{asset['browser_download_url']} ; {release['tag_name']}"
-                if packaging.version.Version(release["tag_name"]) > version:
-                    return Models.Result(
-                        body="\n".join(
-                            [
-                                f"Bumps [{owner}/{repo}](https://github.com/{owner}/{repo}) from {match['tag']} to {release['tag_name']}.",
-                                f"- [Release notes]({release['html_url']})",
-                                f"- [Compare changes](https://github.com/{owner}/{repo}/compare/{match['tag']}...{release['tag_name']})",
-                            ]
-                        ),
-                        package=f"{owner}/{repo}",
-                        value=value,
-                        version_from=match["tag"].removeprefix("v"),
-                        version_to=release["tag_name"].removeprefix("v"),
-                    )
-                return f"{dependency.option} = {value}"
+            if asset["name"] not in names:
+                continue
+            owner, repo = self._parse_link(release["url"])
+            value = f"{'' if match['package'] is None else f'{match["package"]} @ '}{asset['browser_download_url']} ; {release['tag_name']}"
+            return (
+                Models.Result(
+                    body="\n".join(
+                        [
+                            f"Bumps [{owner}/{repo}](https://github.com/{owner}/{repo}) from {match['tag']} to {release['tag_name']}.",
+                            f"- [Release notes]({release['html_url']})",
+                            f"- [Compare changes](https://github.com/{owner}/{repo}/compare/{match['tag']}...{release['tag_name']})",
+                        ]
+                    ),
+                    package=f"{owner}/{repo}",
+                    value=value,
+                    version_from=match["tag"].removeprefix("v"),
+                    version_to=release["tag_name"].removeprefix("v"),
+                )
+                if packaging.version.Version(release["tag_name"])
+                > packaging.version.Version(match["tag"])
+                else f"{dependency.option} = {value}"
+            )
+        return None
 
     def release_tag_ball(
         self, dependency: Models.Dependency
     ) -> Models.Result | str | None:
         match = typing.cast(MatchTag | None, self._ball_tag.fullmatch(dependency.value))
         if not match:
-            return
-        version = packaging.version.Version(match["tag"])
-        release = self._request_release(
-            match["name"], match["tag"], version.is_prerelease
-        )
+            return None
+        release = self._request_release(match["name"], match["tag"])
         if not release:
-            return
+            return None
         ball = release[f"{match['variant']}ball_url"]
         owner, repo = self._parse_link(ball)
         value = f"{'' if match['package'] is None else f'{match["package"]} @ '}{ball} ; {release['tag_name']}"
-        if packaging.version.Version(release["tag_name"]) > version:
-            return Models.Result(
+        return (
+            Models.Result(
                 body="\n".join(
                     [
                         f"Bumps [{owner}/{repo}](https://github.com/{owner}/{repo}) from {match['tag']} to {release['tag_name']}.",
@@ -228,7 +227,10 @@ class Resolve:
                 version_from=match["tag"].removeprefix("v"),
                 version_to=release["tag_name"].removeprefix("v"),
             )
-        return f"{dependency.option} = {value}"
+            if packaging.version.Version(release["tag_name"])
+            > packaging.version.Version(match["tag"])
+            else f"{dependency.option} = {value}"
+        )
 
     def release_tag_commit_archive(
         self, dependency: Models.Dependency
@@ -237,18 +239,15 @@ class Resolve:
             MatchCommit | None, self._archive_commit.fullmatch(dependency.value)
         )
         if not match:
-            return
-        version = packaging.version.Version(match["tag"])
-        release = self._request_release(
-            match["name"], match["tag"], version.is_prerelease
-        )
+            return None
+        release = self._request_release(match["name"], match["tag"])
         if not release:
-            return
+            return None
         owner, repo = self._parse_link(release["url"])
         commit = self._request_tag_id(owner, repo, release["tag_name"])["object"]["sha"]
         value = f"{'' if match['package'] is None else f'{match["package"]} @ '}https://github.com/{owner}/{repo}/archive/{commit}.{match['variant']} ; {release['tag_name']}"
-        if packaging.version.Version(release["tag_name"]) > version:
-            return Models.Result(
+        return (
+            Models.Result(
                 body="\n".join(
                     [
                         f"Bumps [{owner}/{repo}](https://github.com/{owner}/{repo}) from {match['tag']} to {release['tag_name']}.",
@@ -261,7 +260,10 @@ class Resolve:
                 version_from=match["tag"].removeprefix("v"),
                 version_to=release["tag_name"].removeprefix("v"),
             )
-        return f"{dependency.option} = {value}"
+            if packaging.version.Version(release["tag_name"])
+            > packaging.version.Version(match["tag"])
+            else f"{dependency.option} = {value}"
+        )
 
     def release_tag_commit_ball(
         self, dependency: Models.Dependency
@@ -270,18 +272,15 @@ class Resolve:
             MatchCommit | None, self._ball_commit.fullmatch(dependency.value)
         )
         if not match:
-            return
-        version = packaging.version.Version(match["tag"])
-        release = self._request_release(
-            match["name"], match["tag"], version.is_prerelease
-        )
+            return None
+        release = self._request_release(match["name"], match["tag"])
         if not release:
-            return
+            return None
         owner, repo = self._parse_link(release["url"])
         commit = self._request_tag_id(owner, repo, release["tag_name"])["object"]["sha"]
         value = f"{'' if match['package'] is None else f'{match["package"]} @ '}https://api.github.com/repos/{owner}/{repo}/{match['variant']}ball/{commit} ; {release['tag_name']}"
-        if packaging.version.Version(release["tag_name"]) > version:
-            return Models.Result(
+        return (
+            Models.Result(
                 body="\n".join(
                     [
                         f"Bumps [{owner}/{repo}](https://github.com/{owner}/{repo}) from {match['tag']} to {release['tag_name']}.",
@@ -294,24 +293,24 @@ class Resolve:
                 version_from=match["tag"].removeprefix("v"),
                 version_to=release["tag_name"].removeprefix("v"),
             )
-        return f"{dependency.option} = {value}"
+            if packaging.version.Version(release["tag_name"])
+            > packaging.version.Version(match["tag"])
+            else f"{dependency.option} = {value}"
+        )
 
     def release_tag_git(
         self, dependency: Models.Dependency
     ) -> Models.Result | str | None:
         match = typing.cast(MatchTag | None, self._git_tag.fullmatch(dependency.value))
         if not match:
-            return
-        version = packaging.version.Version(match["tag"])
-        release = self._request_release(
-            match["name"], match["tag"], version.is_prerelease
-        )
+            return None
+        release = self._request_release(match["name"], match["tag"])
         if not release:
-            return
+            return None
         owner, repo = self._parse_link(release["url"])
         value = f"{'' if match['package'] is None else f'{match["package"]} @ '}{match['variant']}://github.com/{owner}/{repo}.git#{release['tag_name']} ; {release['tag_name']}"
-        if packaging.version.Version(release["tag_name"]) > version:
-            return Models.Result(
+        return (
+            Models.Result(
                 body="\n".join(
                     [
                         f"Bumps [{owner}/{repo}](https://github.com/{owner}/{repo}) from {match['tag']} to {release['tag_name']}.",
@@ -324,22 +323,25 @@ class Resolve:
                 version_from=match["tag"].removeprefix("v"),
                 version_to=release["tag_name"].removeprefix("v"),
             )
-        return f"{dependency.option} = {value}"
+            if packaging.version.Version(release["tag_name"])
+            > packaging.version.Version(match["tag"])
+            else f"{dependency.option} = {value}"
+        )
 
     def tag_archive(self, dependency: Models.Dependency) -> Models.Result | str | None:
         match = typing.cast(
             MatchTag | None, self._archive_tag.fullmatch(dependency.value)
         )
         if not match:
-            return
+            return None
         version = packaging.version.Version(match["tag"])
-        tag = self._request_tag(match["name"], version.is_prerelease)
+        tag = self._request_tag(match["name"], version)
         if not tag:
-            return
+            return None
         owner, repo = self._parse_link(tag["commit"]["url"])
         value = f"{'' if match['package'] is None else f'{match["package"]} @ '}https://github.com/{owner}/{repo}/archive/refs/tags/{tag['name']}.{match['variant']} ; {tag['name']}"
-        if packaging.version.Version(tag["name"]) > version:
-            return Models.Result(
+        return (
+            Models.Result(
                 body="\n".join(
                     [
                         f"Bumps [{owner}/{repo}](https://github.com/{owner}/{repo}) from {match['tag']} to {tag['name']}.",
@@ -352,21 +354,23 @@ class Resolve:
                 version_from=match["tag"].removeprefix("v"),
                 version_to=tag["name"].removeprefix("v"),
             )
-        return f"{dependency.option} = {value}"
+            if packaging.version.Version(tag["name"]) > version
+            else f"{dependency.option} = {value}"
+        )
 
     def tag_ball(self, dependency: Models.Dependency) -> Models.Result | str | None:
         match = typing.cast(MatchTag | None, self._ball_tag.fullmatch(dependency.value))
         if not match:
-            return
+            return None
         version = packaging.version.Version(match["tag"])
-        tag = self._request_tag(match["name"], version.is_prerelease)
+        tag = self._request_tag(match["name"], version)
         if not tag:
-            return
+            return None
         ball = tag[f"{match['variant']}ball_url"]
         owner, repo = self._parse_link(ball)
         value = f"{'' if match['package'] is None else f'{match["package"]} @ '}{ball} ; {tag['name']}"
-        if packaging.version.Version(tag["name"]) > version:
-            return Models.Result(
+        return (
+            Models.Result(
                 body="\n".join(
                     [
                         f"Bumps [{owner}/{repo}](https://github.com/{owner}/{repo}) from {match['tag']} to {tag['name']}.",
@@ -379,7 +383,9 @@ class Resolve:
                 version_from=match["tag"].removeprefix("v"),
                 version_to=tag["name"].removeprefix("v"),
             )
-        return f"{dependency.option} = {value}"
+            if packaging.version.Version(tag["name"]) > version
+            else f"{dependency.option} = {value}"
+        )
 
     def tag_commit_archive(
         self, dependency: Models.Dependency
@@ -388,15 +394,15 @@ class Resolve:
             MatchCommit | None, self._archive_commit.fullmatch(dependency.value)
         )
         if not match:
-            return
+            return None
         version = packaging.version.Version(match["tag"])
-        tag = self._request_tag(match["name"], version.is_prerelease)
+        tag = self._request_tag(match["name"], version)
         if not tag:
-            return
+            return None
         owner, repo = self._parse_link(tag["commit"]["url"])
         value = f"{'' if match['package'] is None else f'{match["package"]} @ '}https://github.com/{owner}/{repo}/archive/{tag['commit']['sha']}.{match['variant']} ; {tag['name']}"
-        if packaging.version.Version(tag["name"]) > version:
-            return Models.Result(
+        return (
+            Models.Result(
                 body="\n".join(
                     [
                         f"Bumps [{owner}/{repo}](https://github.com/{owner}/{repo}) from {match['tag']} to {tag['name']}.",
@@ -409,7 +415,9 @@ class Resolve:
                 version_from=match["tag"].removeprefix("v"),
                 version_to=tag["name"].removeprefix("v"),
             )
-        return f"{dependency.option} = {value}"
+            if packaging.version.Version(tag["name"]) > version
+            else f"{dependency.option} = {value}"
+        )
 
     def tag_commit_ball(
         self, dependency: Models.Dependency
@@ -418,15 +426,15 @@ class Resolve:
             MatchCommit | None, self._ball_commit.fullmatch(dependency.value)
         )
         if not match:
-            return
+            return None
         version = packaging.version.Version(match["tag"])
-        tag = self._request_tag(match["name"], version.is_prerelease)
+        tag = self._request_tag(match["name"], version)
         if not tag:
-            return
+            return None
         owner, repo = self._parse_link(tag["commit"]["url"])
         value = f"{'' if match['package'] is None else f'{match["package"]} @ '}https://api.github.com/repos/{owner}/{repo}/{match['variant']}ball/{tag['commit']['sha']} ; {tag['name']}"
-        if packaging.version.Version(tag["name"]) > version:
-            return Models.Result(
+        return (
+            Models.Result(
                 body="\n".join(
                     [
                         f"Bumps [{owner}/{repo}](https://github.com/{owner}/{repo}) from {match['tag']} to {tag['name']}.",
@@ -439,7 +447,9 @@ class Resolve:
                 version_from=match["tag"].removeprefix("v"),
                 version_to=tag["name"].removeprefix("v"),
             )
-        return f"{dependency.option} = {value}"
+            if packaging.version.Version(tag["name"]) > version
+            else f"{dependency.option} = {value}"
+        )
 
     def tag_commit_git(
         self, dependency: Models.Dependency
@@ -448,15 +458,15 @@ class Resolve:
             MatchCommit | None, self._git_commit.fullmatch(dependency.value)
         )
         if not match:
-            return
+            return None
         version = packaging.version.Version(match["tag"])
-        tag = self._request_tag(match["name"], version.is_prerelease)
+        tag = self._request_tag(match["name"], version)
         if not tag:
-            return
+            return None
         owner, repo = self._parse_link(tag["commit"]["url"])
         value = f"{'' if match['package'] is None else f'{match["package"]} @ '}{match['variant']}://github.com/{owner}/{repo}.git#{tag['commit']['sha']} ; {tag['name']}"
-        if packaging.version.Version(tag["name"]) > version:
-            return Models.Result(
+        return (
+            Models.Result(
                 body="\n".join(
                     [
                         f"Bumps [{owner}/{repo}](https://github.com/{owner}/{repo}) from {match['tag']} to {tag['name']}.",
@@ -469,20 +479,22 @@ class Resolve:
                 version_from=match["tag"].removeprefix("v"),
                 version_to=tag["name"].removeprefix("v"),
             )
-        return f"{dependency.option} = {value}"
+            if packaging.version.Version(tag["name"]) > version
+            else f"{dependency.option} = {value}"
+        )
 
     def tag_git(self, dependency: Models.Dependency) -> Models.Result | str | None:
         match = typing.cast(MatchTag | None, self._git_tag.fullmatch(dependency.value))
         if not match:
-            return
+            return None
         version = packaging.version.Version(match["tag"])
-        tag = self._request_tag(match["name"], version.is_prerelease)
+        tag = self._request_tag(match["name"], version)
         if not tag:
-            return
+            return None
         owner, repo = self._parse_link(tag["commit"]["url"])
         value = f"{'' if match['package'] is None else f'{match["package"]} @ '}{match['variant']}://github.com/{owner}/{repo}.git#{tag['name']} ; {tag['name']}"
-        if packaging.version.Version(tag["name"]) > version:
-            return Models.Result(
+        return (
+            Models.Result(
                 body="\n".join(
                     [
                         f"Bumps [{owner}/{repo}](https://github.com/{owner}/{repo}) from {match['tag']} to {tag['name']}.",
@@ -495,87 +507,94 @@ class Resolve:
                 version_from=match["tag"].removeprefix("v"),
                 version_to=tag["name"].removeprefix("v"),
             )
-        return f"{dependency.option} = {value}"
+            if packaging.version.Version(tag["name"]) > version
+            else f"{dependency.option} = {value}"
+        )
 
     def _parse_link(self, url: str) -> tuple[str, str]:
         fragments = url.split("/", 6)
         return fragments[4], fragments[5]
 
-    def _request_release(
-        self, repo: str, tag_: str, prerelease: bool
-    ) -> Release | None:
+    def _request_release(self, name: str, tag: str) -> Release | None:
+        version = packaging.version.Version(tag)
+        prerelease = version.is_prerelease
         if not prerelease:
             try:
-                prerelease = self._request_release_id(repo, tag_)["prerelease"]
+                prerelease = self._request_release_id(name, tag)["prerelease"]
             except Exception:
-                print(f"::debug::Invalid release: {repo} {tag_}")
-        response = self._request(f"https://api.github.com/repos/{repo}/releases")
-        tag = None
-        version = None
-        for _tag in typing.cast(list[Release], response.json()):
-            try:
-                _version = packaging.version.Version(_tag["tag_name"])
-                if (_version.is_prerelease or _tag["prerelease"]) and not prerelease:
+                print(f"::debug::Invalid release: {name} {tag}")
+        latest = None
+        url = f"https://api.github.com/repos/{name}/releases?per_page=100"
+        while url:
+            response = self._request(url)
+            for _tag in typing.cast(list[Release], response.json()):
+                try:
+                    _version = packaging.version.Version(_tag["tag_name"])
+                    if _version.is_prerelease and not prerelease:
+                        continue
+                    elif _version > version:
+                        return _tag
+                    elif not latest:
+                        latest = _tag
+                except packaging.version.InvalidVersion:
+                    _owner, _repo = self._parse_link(_tag["url"])
+                    print(
+                        f"::debug::Invalid version: {_owner}/{_repo} {_tag['tag_name']}"
+                    )
                     continue
-            except packaging.version.InvalidVersion:
-                owner, repo = self._parse_link(_tag["url"])
-                print(f"::debug::Invalid version: {owner}/{repo} {_tag['tag_name']}")
-                continue
-            if tag is None or version is None or _version > version:
-                tag = _tag
-                version = _version
-        return tag
+            url = response.links.get("next", {}).get("url")
+        return latest
 
-    def _request_release_id(self, repo: str, tag: str) -> Release:
+    def _request_release_id(self, name: str, tag: str) -> Release:
         return typing.cast(
             Release,
             self._request(
-                f"https://api.github.com/repos/{repo}/releases/tags/{tag}"
+                f"https://api.github.com/repos/{name}/releases/tags/{tag}"
             ).json(),
         )
 
-    def _request_tag(self, repo: str, prerelease: bool) -> Tag | None:
-        response = self._request(f"https://api.github.com/repos/{repo}/tags")
-        tag = None
-        version = None
-        for _tag in typing.cast(list[Tag], response.json()):
-            try:
-                _version = packaging.version.Version(_tag["name"])
-                if _version.is_prerelease and not prerelease:
+    def _request_tag(self, name: str, version: packaging.version.Version) -> Tag | None:
+        latest = None
+        url = f"https://api.github.com/repos/{name}/tags?per_page=100"
+        while url:
+            response = self._request(url)
+            for _tag in typing.cast(list[Tag], response.json()):
+                try:
+                    _version = packaging.version.Version(_tag["name"])
+                    if _version.is_prerelease and not version.is_prerelease:
+                        continue
+                    elif _version > version:
+                        return _tag
+                    elif not latest:
+                        latest = _tag
+                except packaging.version.InvalidVersion:
+                    _owner, _repo = self._parse_link(_tag["commit"]["url"])
+                    print(f"::debug::Invalid version: {_owner}/{_repo} {_tag['name']}")
                     continue
-            except packaging.version.InvalidVersion:
-                owner, repo = self._parse_link(_tag["commit"]["url"])
-                print(f"::debug::Invalid version: {owner}/{repo} {_tag['name']}")
-                continue
-            if tag is None or version is None or _version > version:
-                tag = _tag
-                version = _version
-        return tag
+            url = response.links.get("next", {}).get("url")
+        return latest
 
-    def _request_tag_id(self, owner: str, name: str, tag: str) -> TagID:
+    def _request_tag_id(self, owner: str, repo: str, tag: str) -> TagID:
         return typing.cast(
             TagID,
             self._request(
-                f"https://api.github.com/repos/{owner}/{name}/git/refs/tags/{tag}"
+                f"https://api.github.com/repos/{owner}/{repo}/git/refs/tags/{tag}"
             ).json(),
         )
 
     def _request(self, url: str) -> requests.Response:
+        headers = {
+            "Accept": "application/vnd.github+json",
+            "User-Agent": Models.Config.USER_AGENT,
+            "X-GitHub-Api-Version": "2026-03-10",
+        }
         token = os.getenv("GITHUB_TOKEN")
+        if token is not None:
+            headers["Authorization"] = f"Bearer {token}"
         response = requests.get(
             url=url,
-            headers={
-                "Accept": "application/vnd.github+json",
-                "User-Agent": Models.Config.USER_AGENT,
-                "X-GitHub-Api-Version": "2026-03-10",
-            }
-            if token is None
-            else {
-                "Accept": "application/vnd.github+json",
-                "Authorization": f"Bearer {token}",
-                "User-Agent": Models.Config.USER_AGENT,
-                "X-GitHub-Api-Version": "2026-03-10",
-            },
+            headers=headers,
+            timeout=Models.Config.TIMEOUT,
         )
         response.raise_for_status()
         return response

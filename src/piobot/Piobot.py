@@ -31,7 +31,7 @@ class Piobot:
         if datetime.datetime.now(
             self._git.head.commit.committed_datetime.tzinfo
         ) - self._git.head.commit.committed_datetime > datetime.timedelta(days=90):
-            return
+            return None
         self._git.config_writer().set_value(
             "user", "name", "github-actions[bot]"
         ).release()
@@ -82,7 +82,7 @@ class Piobot:
                         continue
                 option = None
 
-    def check(self) -> int:
+    def check(self) -> None:
         for provider in [
             self.platformio,
             self.github,
@@ -93,13 +93,12 @@ class Piobot:
             provider()
             if len(self.dependencies) == 0:
                 break
-        return 0
 
     def arduino(self) -> None:
         resolve = Arduino.Resolve()
         for dependency in self.dependencies.copy():
             try:
-                self._handle(dependency, resolve.libraries(dependency))
+                self._handle(dependency, resolve.library(dependency))
             except Exception as e:
                 print(f"::warning Arduino::{e}")
 
@@ -186,13 +185,13 @@ class Piobot:
             )
             self._bump(dependency, result)
         else:
-            return
+            return None
         self.dependencies.remove(dependency)
 
     def _bump(self, dependency: Models.Dependency, result: Models.Result) -> None:
         head = f"dependabot/platformio/{result.package}-{result.version_to}"
         if head in self._git.heads:
-            return
+            return None
         repo = self._github.get_repo(self.repository)
         if (
             repo.get_pulls(
@@ -200,7 +199,7 @@ class Piobot:
             ).totalCount
             > 0
         ):
-            return
+            return None
         open = repo.get_pulls(base=self.ref, state="open")
         _pr = next(
             (
@@ -217,7 +216,7 @@ class Piobot:
             )
             >= 5
         ):
-            return
+            return None
         self._git.head.set_reference(self._git.create_head(head, self.ref))
         self._git.head.reset(index=True, working_tree=True)
         i = 0
