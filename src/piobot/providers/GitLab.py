@@ -2,7 +2,6 @@ import packaging.version
 import re
 import requests
 import typing
-import urllib.parse
 
 from .. import Models
 
