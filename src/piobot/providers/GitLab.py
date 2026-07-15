@@ -202,16 +202,6 @@ class Resolve:
         fragments = url.split("/", 5)
         return fragments[3], fragments[4]
 
-    def _parse_next(self, response: requests.Response) -> str | None:
-        if len(response.headers["X-Next-Page"]) > 0:
-            _url = urllib.parse.urlparse(response.url)
-            _query = urllib.parse.parse_qs(_url.query)
-            _query["page"] = [response.headers["X-Next-Page"]]
-            return urllib.parse.urlunparse(
-                _url._replace(query=urllib.parse.urlencode(_query, True))
-            )
-        return None
-
     def _request_release(
         self, owner: str, repo: str, version: packaging.version.Version
     ) -> Release | None:
@@ -236,7 +226,7 @@ class Resolve:
                         f"::debug::Invalid version: {_owner}/{_repo} {_release['tag_name']}"
                     )
                     continue
-            url = self._parse_next(response)
+            url = response.links.get("next", {}).get("url")
         return latest
 
     def _request_tag(
@@ -259,7 +249,7 @@ class Resolve:
                     _owner, _repo = self._parse_link(_tag["commit"]["web_url"])
                     print(f"::debug::Invalid version: {_owner}/{_repo} {_tag['name']}")
                     continue
-            url = self._parse_next(response)
+            url = response.links.get("next", {}).get("url")
         return latest
 
     def _request(self, url: str) -> requests.Response:
