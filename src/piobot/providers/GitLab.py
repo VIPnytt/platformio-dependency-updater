@@ -202,6 +202,18 @@ class Resolve:
     def _request_release(
         self, owner: str, repo: str, version: packaging.version.Version
     ) -> Release | None:
+        """
+        Find the first eligible GitLab release newer than the specified version.
+        
+        Parameters:
+            owner (str): GitLab project owner or namespace.
+            repo (str): GitLab repository name.
+            version (packaging.version.Version): Current dependency version.
+        
+        Returns:
+            Release | None: A newer eligible release, the first eligible fallback release,
+            or None when no valid release is available.
+        """
         latest = None
         url = (
             f"https://gitlab.com/api/v4/projects/{owner}%2F{repo}/releases?per_page=100"
@@ -238,6 +250,17 @@ class Resolve:
     def _request_tag(
         self, owner: str, repo: str, version: packaging.version.Version
     ) -> Tag | None:
+        """
+        Find a suitable GitLab repository tag for the requested version.
+        
+        Parameters:
+            owner (str): GitLab project owner or namespace.
+            repo (str): GitLab repository name.
+            version (packaging.version.Version): Current dependency version.
+        
+        Returns:
+            Tag | None: A newer eligible tag, the first eligible tag at or below the requested version, or None if no tags are available.
+        """
         latest = None
         url = f"https://gitlab.com/api/v4/projects/{owner}%2F{repo}/repository/tags?per_page=100"
         while url:

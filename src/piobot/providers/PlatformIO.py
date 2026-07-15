@@ -161,6 +161,16 @@ class Resolve:
         return f"{dependency.option} = {value}"
 
     def _parse(self, data: Data, version: packaging.version.Version) -> Version | None:
+        """
+        Selects an eligible registry version relative to the current version.
+        
+        Parameters:
+            data (Data): Package metadata containing candidate versions.
+            version (packaging.version.Version): The currently installed version.
+        
+        Returns:
+            Version | None: The first eligible version newer than the current version, or the first eligible version not newer when no newer version exists; `None` if no candidate qualifies.
+        """
         latest = None
         for _candidate in typing.cast(list[Version], data["versions"]):
             try:

@@ -197,6 +197,16 @@ class Resolve:
     def _request_tag(
         self, name: str, version: packaging.version.Version
     ) -> Value | None:
+        """
+        Find the first acceptable Bitbucket tag for a repository.
+        
+        Parameters:
+            name (str): Bitbucket repository name.
+            version (packaging.version.Version): Current dependency version.
+        
+        Returns:
+            Value | None: A newer acceptable tag, the latest acceptable tag when no newer tag exists, or None when no suitable tag is found.
+        """
         latest = None
         url = f"https://api.bitbucket.org/2.0/repositories/{name}/refs/tags?sort=-target.date&pagelen=100"
         while url:

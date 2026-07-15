@@ -526,10 +526,29 @@ class Resolve:
         )
 
     def _parse_link(self, url: str) -> tuple[str, str]:
+        """
+        Extract the repository owner and name from a GitHub URL.
+        
+        Parameters:
+        	url (str): GitHub URL containing the owner and repository path.
+        
+        Returns:
+        	tuple[str, str]: The repository owner and name.
+        """
         fragments = url.split("/", 6)
         return fragments[4], fragments[5]
 
     def _request_commit_id(self, name: str, commit: str) -> CommitResponse:
+        """
+        Fetches metadata for a commit in a GitHub repository.
+        
+        Parameters:
+        	name (str): Repository name in `owner/repository` format.
+        	commit (str): Commit SHA or reference.
+        
+        Returns:
+        	CommitResponse: Commit metadata from the GitHub API.
+        """
         return typing.cast(
             CommitResponse,
             self._request(
@@ -538,6 +557,17 @@ class Resolve:
         )
 
     def _request_release(self, name: str, tag: str) -> Release | None:
+        """
+        Find the first eligible GitHub release newer than the specified version.
+        
+        Parameters:
+            name (str): GitHub repository name in ``owner/repository`` format.
+            tag (str): Current release tag used as the version baseline.
+        
+        Returns:
+            Release | None: A newer eligible release, the latest eligible release when no
+            newer release exists, or ``None`` when no eligible release is found.
+        """
         version = packaging.version.Version(tag)
         prerelease = version.is_prerelease
         if not prerelease:
@@ -582,6 +612,16 @@ class Resolve:
         )
 
     def _request_tag(self, name: str, version: packaging.version.Version) -> Tag | None:
+        """
+        Selects an eligible GitHub tag newer than the specified version, or the latest acceptable fallback.
+        
+        Parameters:
+        	name (str): GitHub repository name in `owner/repository` format.
+        	version (packaging.version.Version): Current dependency version used for comparison.
+        
+        Returns:
+        	Tag | None: The first eligible newer tag, the latest acceptable fallback, or `None` when no suitable tag is available.
+        """
         latest = None
         url = f"https://api.github.com/repos/{name}/tags?per_page=100"
         while url:
