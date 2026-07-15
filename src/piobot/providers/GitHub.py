@@ -60,7 +60,7 @@ class Release(typing.TypedDict):
     assets: list[Asset]
     html_url: str
     prerelease: bool
-    published_at: str
+    published_at: str | None
     tag_name: str
     tarball_url: str
     url: str
