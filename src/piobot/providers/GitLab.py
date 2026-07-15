@@ -251,6 +251,7 @@ class Resolve:
                 "Accept": "application/json",
                 "User-Agent": Models.Config.USER_AGENT,
             },
+            timeout=Models.Config.TIMEOUT,
         )
         response.raise_for_status()
         return response

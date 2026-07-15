@@ -593,6 +593,7 @@ class Resolve:
         response = requests.get(
             url=url,
             headers=headers,
+            timeout=Models.Config.TIMEOUT,
         )
         response.raise_for_status()
         return response
