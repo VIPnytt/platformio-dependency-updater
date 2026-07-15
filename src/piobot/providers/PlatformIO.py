@@ -7,14 +7,6 @@ import typing
 from .. import Models
 
 
-class Download(typing.TypedDict):
-    file: str
-    name: str
-    owner: str
-    package: str | None
-    version: str
-
-
 class File(typing.TypedDict):
     download_url: str
     name: str
@@ -23,6 +15,27 @@ class File(typing.TypedDict):
 
 class Owner(typing.TypedDict):
     username: str
+
+
+class Version(typing.TypedDict):
+    files: list[File]
+    name: str
+
+
+class Data(typing.TypedDict):
+    name: str
+    owner: Owner
+    type: str
+    version: Version
+    versions: list[Version]
+
+
+class Download(typing.TypedDict):
+    file: str
+    name: str
+    owner: str
+    package: str | None
+    version: str
 
 
 class Package(typing.TypedDict):
@@ -35,19 +48,6 @@ class Type(enum.StrEnum):
     LIBRARY = "library"
     PLATFORM = "platform"
     TOOL = "tool"
-
-
-class Version(typing.TypedDict):
-    files: list[File]
-    name: str
-
-
-class Response(typing.TypedDict):
-    name: str
-    owner: Owner
-    type: str
-    version: Version
-    versions: list[Version]
 
 
 class Resolve:
@@ -71,13 +71,10 @@ class Resolve:
         if not match:
             return
         version = packaging.version.Version(match["version"])
-        data, _version = self._request_package_version(
-            dependency.option,
-            match["owner"],
-            match["name"],
-            match["version"],
-            version.is_prerelease,
+        data = self._request_package_version(
+            dependency.option, match["owner"], match["name"], match["version"]
         )
+        _version = self._parse(data, version)
         if _version is None:
             return
         system = self._system(data["version"]["files"], match["file"])
@@ -106,13 +103,10 @@ class Resolve:
         if not match:
             return
         version = packaging.version.Version(match["version"])
-        data, _version = self._request_package_version(
-            dependency.option,
-            match["owner"],
-            match["name"],
-            match["version"],
-            version.is_prerelease,
+        data = self._request_package_version(
+            dependency.option, match["owner"], match["name"], match["version"]
         )
+        _version = self._parse(data, version)
         if _version is None:
             return
         system = self._system(data["version"]["files"], match["file"])
@@ -141,9 +135,8 @@ class Resolve:
         if not match:
             return
         version = packaging.version.Version(match["version"])
-        data, _version = self._request_package(
-            dependency.option, match["owner"], match["name"], version.is_prerelease
-        )
+        data = self._request_package(dependency.option, match["owner"], match["name"])
+        _version = self._parse(data, version)
         if _version is None:
             return
         value = f"{data['owner']['username']}/{data['name']} @ {_version['name']}"
@@ -163,23 +156,43 @@ class Resolve:
             )
         return f"{dependency.option} = {value}"
 
+    def _parse(self, data: Data, version: packaging.version.Version) -> Version | None:
+        latest = None
+        for _candidate in typing.cast(list[Version], data["versions"]):
+            try:
+                _version = packaging.version.Version(_candidate["name"])
+                if _version.is_prerelease and not version.is_prerelease:
+                    continue
+                elif _version > version:
+                    return _candidate
+                elif not latest:
+                    latest = _candidate
+            except packaging.version.InvalidVersion:
+                print(
+                    f"::debug::Invalid version: {data['owner']['username']}/{data['name']} {_candidate['name']}"
+                )
+                continue
+        return latest
+
+    def _request_package(self, option: str, owner: str, name: str) -> Data:
+        return typing.cast(
+            Data,
+            self._request(
+                f"https://api.registry.platformio.org/v3/packages/{owner}/{self._type_api(option)}/{name}"
+            ).json(),
+        )
+
     def _request_package_version(
-        self, option: str, owner: str, name: str, version: str, prerelease: bool
-    ) -> tuple[Response, Version | None]:
-        return self._request(
-            f"https://api.registry.platformio.org/v3/packages/{owner}/{self._type_api(option)}/{name}?version={version}",
-            prerelease,
+        self, option: str, owner: str, name: str, version: str
+    ) -> Data:
+        return typing.cast(
+            Data,
+            self._request(
+                f"https://api.registry.platformio.org/v3/packages/{owner}/{self._type_api(option)}/{name}?version={version}"
+            ).json(),
         )
 
-    def _request_package(
-        self, option: str, owner: str, name: str, prerelease: bool
-    ) -> tuple[Response, Version | None]:
-        return self._request(
-            f"https://api.registry.platformio.org/v3/packages/{owner}/{self._type_api(option)}/{name}",
-            prerelease,
-        )
-
-    def _request(self, url: str, prerelease: bool) -> tuple[Response, Version | None]:
+    def _request(self, url: str) -> requests.Response:
         response = requests.get(
             url=url,
             headers={
@@ -188,23 +201,7 @@ class Resolve:
             },
         )
         response.raise_for_status()
-        data = typing.cast(Response, response.json())
-        version = None
-        name = None
-        for _version in typing.cast(list[Version], data["versions"]):
-            try:
-                _name = packaging.version.Version(_version["name"])
-                if _name.is_prerelease and not prerelease:
-                    continue
-            except packaging.version.InvalidVersion:
-                print(
-                    f"::debug::Invalid version: {data['owner']['username']}/{data['name']} {_version['name']}"
-                )
-                continue
-            if version is None or name is None or _name > name:
-                version = _version
-                name = _name
-        return data, version
+        return response
 
     def _system(self, files: list[File], file: str) -> str:
         for _file in files:

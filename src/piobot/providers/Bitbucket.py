@@ -1,4 +1,3 @@
-import os
 import packaging.version
 import re
 import requests
@@ -18,8 +17,8 @@ class Author(typing.TypedDict):
 
 class Commit(typing.TypedDict):
     commit: str
+    name: str
     package: str | None
-    repo: str
     tag: str
     variant: str
 
@@ -39,8 +38,8 @@ class Repository(typing.TypedDict):
 
 
 class Tag(typing.TypedDict):
+    name: str
     package: str | None
-    repo: str
     tag: str
     variant: str
 
@@ -56,8 +55,8 @@ class Value(typing.TypedDict):
     target: Target
 
 
-class Response(typing.TypedDict):
-    next: str
+class Data(typing.TypedDict):
+    next: str | None
     values: Value
 
 
@@ -69,16 +68,16 @@ class Resolve:
 
     def __init__(self) -> None:
         self._name_commit = re.compile(
-            r"^(?:(?P<package>(?:[^/\s]+/)?[^/\s]+)?\s*@\s*)?https://bitbucket\.org/(?P<repo>[^/\s]+/[^/\s]+)/get/(?P<commit>[0-9a-f]{40})\.(?P<variant>tar\.gz|zip)\s*;\s*(?P<tag>\S+)$"
+            r"^(?:(?P<package>(?:[^/\s]+/)?[^/\s]+)?\s*@\s*)?https://bitbucket\.org/(?P<name>[^/\s]+/[^/\s]+)/get/(?P<commit>[0-9a-f]{40})\.(?P<variant>tar\.gz|zip)\s*;\s*(?P<tag>\S+)$"
         )
         self._name_tag = re.compile(
-            r"^(?:(?P<package>(?:[^/\s]+/)?[^/\s]+)?\s*@\s*)?https://bitbucket\.org/(?P<repo>[^/\s]+/[^/\s]+)/get/(?P<tag>[^/\s]+)\.(?P<variant>tar\.gz|zip)(?:\s*;.*)?$"
+            r"^(?:(?P<package>(?:[^/\s]+/)?[^/\s]+)?\s*@\s*)?https://bitbucket\.org/(?P<name>[^/\s]+/[^/\s]+)/get/(?P<tag>[^/\s]+)\.(?P<variant>tar\.gz|zip)(?:\s*;.*)?$"
         )
         self._uuid_commit = re.compile(
-            r"^(?:(?P<package>(?:[^/\s]+/)?[^/\s]+)?\s*@\s*)?https://bitbucket\.org/(?P<repo>%7B[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}%7D/%7B[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}%7D)/get/(?P<commit>[0-9a-f]{40})\.(?P<variant>tar\.gz|zip)(?:\s*;.*)?$"
+            r"^(?:(?P<package>(?:[^/\s]+/)?[^/\s]+)?\s*@\s*)?https://bitbucket\.org/(?P<name>%7B[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}%7D/%7B[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}%7D)/get/(?P<commit>[0-9a-f]{40})\.(?P<variant>tar\.gz|zip)(?:\s*;.*)?$"
         )
         self._uuid_tag = re.compile(
-            r"^(?:(?P<package>(?:[^/\s]+/)?[^/\s]+)?\s*@\s*)?https://bitbucket\.org/(?P<repo>%7B[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}%7D/%7B[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}%7D)/get/(?P<tag>[^/\s]+)\.(?P<variant>tar\.gz|zip)(?:\s*;.*)?$"
+            r"^(?:(?P<package>(?:[^/\s]+/)?[^/\s]+)?\s*@\s*)?https://bitbucket\.org/(?P<name>%7B[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}%7D/%7B[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}%7D)/get/(?P<tag>[^/\s]+)\.(?P<variant>tar\.gz|zip)(?:\s*;.*)?$"
         )
 
     def name_commit(self, dependency: Models.Dependency) -> Models.Result | str | None:
@@ -88,14 +87,12 @@ class Resolve:
         if not match:
             return
         version = packaging.version.Version(match["tag"])
-        tag = self._request_tag(match["repo"], version.is_prerelease)
+        tag = self._request_tag(match["name"], version)
         if tag is None:
             return
         value = f"{'' if match['package'] is None else f'{match["package"]} @ '}{tag['target']['repository']['links']['html']['href']}/get/{tag['target']['hash']}.{match['variant']} ; {tag['name']}"
-        if packaging.version.Version(tag["name"]) > packaging.version.Version(
-            match["tag"]
-        ):
-            return Models.Result(
+        return (
+            Models.Result(
                 body="\n".join(
                     [
                         f"Bumps [{tag['target']['repository']['full_name']}]({tag['target']['repository']['links']['html']['href']}) from {match['tag']} to {tag['name']}.",
@@ -108,19 +105,21 @@ class Resolve:
                 version_from=match["tag"].removeprefix("v"),
                 version_to=tag["name"].removeprefix("v"),
             )
-        return f"{dependency.option} = {value}"
+            if packaging.version.Version(tag["name"]) > version
+            else f"{dependency.option} = {value}"
+        )
 
     def name_tag(self, dependency: Models.Dependency) -> Models.Result | str | None:
         match = typing.cast(Tag | None, self._name_tag.fullmatch(dependency.value))
         if not match:
             return
         version = packaging.version.Version(match["tag"])
-        tag = self._request_tag(match["repo"], version.is_prerelease)
+        tag = self._request_tag(match["name"], version)
         if tag is None:
             return
         value = f"{'' if match['package'] is None else f'{match["package"]} @ '}{tag['target']['repository']['links']['html']['href']}/get/{tag['name']}.{match['variant']} ; {tag['name']}"
-        if packaging.version.Version(tag["name"]) > version:
-            return Models.Result(
+        return (
+            Models.Result(
                 body="\n".join(
                     [
                         f"Bumps [{tag['target']['repository']['full_name']}]({tag['target']['repository']['links']['html']['href']}) from {match['tag']} to {tag['name']}.",
@@ -133,7 +132,9 @@ class Resolve:
                 version_from=match["tag"].removeprefix("v"),
                 version_to=tag["name"].removeprefix("v"),
             )
-        return f"{dependency.option} = {value}"
+            if packaging.version.Version(tag["name"]) > version
+            else f"{dependency.option} = {value}"
+        )
 
     def uuid_commit(self, dependency: Models.Dependency) -> Models.Result | str | None:
         match = typing.cast(
@@ -142,12 +143,12 @@ class Resolve:
         if not match:
             return
         version = packaging.version.Version(match["tag"])
-        tag = self._request_tag(match["repo"], version.is_prerelease)
+        tag = self._request_tag(match["name"], version)
         if tag is None:
             return
         value = f"{'' if match['package'] is None else f'{match["package"]} @ '}https://bitbucket.org/{urllib.parse.quote(tag['target']['author']['user']['uuid'])}/{urllib.parse.quote(tag['target']['repository']['uuid'])}/get/{tag['target']['hash']}.{match['variant']} ; {tag['target']['repository']['full_name']} {tag['name']}"
-        if packaging.version.Version(tag["name"]) > version:
-            return Models.Result(
+        return (
+            Models.Result(
                 body="\n".join(
                     [
                         f"Bumps [{tag['target']['repository']['full_name']}]({tag['target']['repository']['links']['html']['href']}) from {match['tag']} to {tag['name']}.",
@@ -160,19 +161,21 @@ class Resolve:
                 version_from=match["tag"].removeprefix("v"),
                 version_to=tag["name"].removeprefix("v"),
             )
-        return f"{dependency.option} = {value}"
+            if packaging.version.Version(tag["name"]) > version
+            else f"{dependency.option} = {value}"
+        )
 
     def uuid_tag(self, dependency: Models.Dependency) -> Models.Result | str | None:
         match = typing.cast(Tag | None, self._uuid_tag.fullmatch(dependency.value))
         if not match:
             return
         version = packaging.version.Version(match["tag"])
-        tag = self._request_tag(match["repo"], version.is_prerelease)
+        tag = self._request_tag(match["name"], version)
         if tag is None:
             return
         value = f"{'' if match['package'] is None else f'{match["package"]} @ '}https://bitbucket.org/{urllib.parse.quote(tag['target']['author']['user']['uuid'])}/{urllib.parse.quote(tag['target']['repository']['uuid'])}/get/{tag['name']}.{match['variant']} ; {tag['target']['repository']['full_name']} {tag['name']}"
-        if packaging.version.Version(tag["name"]) > version:
-            return Models.Result(
+        return (
+            Models.Result(
                 body="\n".join(
                     [
                         f"Bumps [{tag['target']['repository']['full_name']}]({tag['target']['repository']['links']['html']['href']}) from {match['tag']} to {tag['name']}.",
@@ -185,44 +188,39 @@ class Resolve:
                 version_from=match["tag"].removeprefix("v"),
                 version_to=tag["name"].removeprefix("v"),
             )
-        return f"{dependency.option} = {value}"
-
-    def _request_tag(self, repo: str, prerelease: bool) -> Value | None:
-        response = typing.cast(
-            Response,
-            self._request(
-                f"https://api.bitbucket.org/2.0/repositories/{repo}/refs/tags?sort=-target.date"
-            ).json(),
+            if packaging.version.Version(tag["name"]) > version
+            else f"{dependency.option} = {value}"
         )
-        value = None
-        version = None
-        for _value in typing.cast(list[Value], response["values"]):
-            try:
-                _version = packaging.version.Version(_value["name"])
-                if _version.is_prerelease and not prerelease:
+
+    def _request_tag(
+        self, name: str, version: packaging.version.Version
+    ) -> Value | None:
+        latest = None
+        url = f"https://api.bitbucket.org/2.0/repositories/{name}/refs/tags?sort=-target.date&pagelen=100"
+        while url:
+            response = typing.cast(Data, self._request(url).json())
+            for _value in typing.cast(list[Value], response["values"]):
+                try:
+                    _version = packaging.version.Version(_value["name"])
+                    if _version.is_prerelease and not version.is_prerelease:
+                        continue
+                    elif _version > version:
+                        return _value
+                    elif not latest:
+                        latest = _value
+                except packaging.version.InvalidVersion:
+                    print(
+                        f"::debug::Invalid version: {_value['target']['repository']['full_name']} {_value['name']}"
+                    )
                     continue
-            except packaging.version.InvalidVersion:
-                print(
-                    f"::debug::Invalid version: {_value['target']['repository']['full_name']} {_value['name']}"
-                )
-                continue
-            if value is None or version is None or _version > version:
-                value = _value
-                version = _version
-        return value
+            url = response["next"] if "next" in response else None
+        return latest
 
     def _request(self, url: str) -> requests.Response:
-        token = os.getenv("$BITBUCKET_STEP_OIDC_TOKEN")
         response = requests.get(
             url=url,
             headers={
                 "Accept": "application/json",
-                "User-Agent": Models.Config.USER_AGENT,
-            }
-            if token is None
-            else {
-                "Accept": "application/json",
-                "Authorization": f"Bearer {token}",
                 "User-Agent": Models.Config.USER_AGENT,
             },
         )

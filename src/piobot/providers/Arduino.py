@@ -44,41 +44,43 @@ class Resolve:
         except Exception:
             self._data["libraries"] = []
 
-    def libraries(self, dependency: Models.Dependency) -> Models.Result | str | None:
+    def library(self, dependency: Models.Dependency) -> Models.Result | str | None:
         match = typing.cast(Match | None, self._libraries.fullmatch(dependency.value))
         if not match:
             return
         version = packaging.version.Version(match["version"])
-        library = self._parse(match["name"], version.is_prerelease)
+        library = self._parse(match["name"], version)
         if library is None:
             return
         value = f"{'' if match['package'] is None else f'{match["package"]} @ '}{library['url']} ; {library['version']}"
-        if packaging.version.Version(library["version"]) > version:
-            return Models.Result(
+        return (
+            Models.Result(
                 body=f"Bumps [{library['name']}]({library['website']}) from {match['version']} to {library['version']}.",
                 package=library["name"],
                 value=value,
                 version_from=match["version"].removeprefix("v"),
                 version_to=library["version"].removeprefix("v"),
             )
-        return f"{dependency.option} = {value}"
+            if packaging.version.Version(library["version"]) > version
+            else f"{dependency.option} = {value}"
+        )
 
-    def _parse(self, name: str, prerelease: bool) -> Library | None:
-        library = None
-        version = None
+    def _parse(self, name: str, version: packaging.version.Version) -> Library | None:
+        latest = None
         for _library in self._data["libraries"]:
             if _library["name"] != name:
                 continue
             try:
                 _version = packaging.version.Version(_library["version"])
-                if _version.is_prerelease and not prerelease:
+                if _version.is_prerelease and not version.is_prerelease:
                     continue
+                elif _version > version:
+                    return _library
+                elif not latest:
+                    latest = _library
             except packaging.version.InvalidVersion:
                 print(
                     f"::debug::Invalid version: {_library['name']} {_library['version']}"
                 )
                 continue
-            if library is None or version is None or _version > version:
-                library = _library
-                version = _version
-        return library
+        return latest

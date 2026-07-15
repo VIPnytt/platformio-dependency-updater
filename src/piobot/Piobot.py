@@ -99,7 +99,7 @@ class Piobot:
         resolve = Arduino.Resolve()
         for dependency in self.dependencies.copy():
             try:
-                self._handle(dependency, resolve.libraries(dependency))
+                self._handle(dependency, resolve.library(dependency))
             except Exception as e:
                 print(f"::warning Arduino::{e}")
 
