@@ -199,6 +199,7 @@ class Resolve:
                 > packaging.version.Version(match["tag"])
                 else f"{dependency.option} = {value}"
             )
+        return None
 
     def release_tag_ball(
         self, dependency: Models.Dependency

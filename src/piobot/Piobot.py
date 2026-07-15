@@ -82,7 +82,7 @@ class Piobot:
                         continue
                 option = None
 
-    def check(self) -> int:
+    def check(self) -> None:
         for provider in [
             self.platformio,
             self.github,
@@ -93,7 +93,6 @@ class Piobot:
             provider()
             if len(self.dependencies) == 0:
                 break
-        return 0
 
     def arduino(self) -> None:
         resolve = Arduino.Resolve()

@@ -97,6 +97,7 @@ class Resolve:
                     version_to=_version["name"].removeprefix("v"),
                 )
             return f"{dependency.option} = {value}"
+        return None
 
     def download(self, dependency: Models.Dependency) -> Models.Result | str | None:
         match = typing.cast(Download | None, self._download.fullmatch(dependency.value))
@@ -129,6 +130,7 @@ class Resolve:
                     version_to=_version["name"].removeprefix("v"),
                 )
             return f"{dependency.option} = {value}"
+        return None
 
     def package(self, dependency: Models.Dependency) -> Models.Result | str | None:
         match = typing.cast(Package | None, self._package.fullmatch(dependency.value))

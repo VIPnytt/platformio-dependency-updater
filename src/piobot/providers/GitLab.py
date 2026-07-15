@@ -96,6 +96,7 @@ class Resolve:
                 if packaging.version.Version(release["tag_name"]) > version
                 else f"{dependency.option} = {value}"
             )
+        return None
 
     def release_tag_commit(
         self, dependency: Models.Dependency
@@ -131,6 +132,7 @@ class Resolve:
                 if packaging.version.Version(release["tag_name"]) > version
                 else f"{dependency.option} = {value}"
             )
+        return None
 
     def tag(self, dependency: Models.Dependency) -> Models.Result | str | None:
         match = typing.cast(MatchTag | None, self._tag.fullmatch(dependency.value))
