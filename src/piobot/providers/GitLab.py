@@ -67,10 +67,7 @@ class Resolve:
         )
 
     def release_tag(self, dependency: Models.Dependency) -> Models.Result | str | None:
-        match = typing.cast(
-            MatchTag | None,
-            self._tag.fullmatch(dependency.value),
-        )
+        match = typing.cast(MatchTag | None, self._tag.fullmatch(dependency.value))
         if not match:
             return None
         version = packaging.version.Version(match["tag"])
@@ -104,8 +101,7 @@ class Resolve:
         self, dependency: Models.Dependency
     ) -> Models.Result | str | None:
         match = typing.cast(
-            MatchCommit | None,
-            self._tag.fullmatch(dependency.value),
+            MatchCommit | None, self._commit.fullmatch(dependency.value)
         )
         if not match:
             return None
@@ -137,10 +133,7 @@ class Resolve:
             )
 
     def tag(self, dependency: Models.Dependency) -> Models.Result | str | None:
-        match = typing.cast(
-            MatchTag | None,
-            self._tag.fullmatch(dependency.value),
-        )
+        match = typing.cast(MatchTag | None, self._tag.fullmatch(dependency.value))
         if not match:
             return None
         version = packaging.version.Version(match["tag"])
@@ -169,8 +162,7 @@ class Resolve:
 
     def tag_commit(self, dependency: Models.Dependency) -> Models.Result | str | None:
         match = typing.cast(
-            MatchCommit | None,
-            self._tag.fullmatch(dependency.value),
+            MatchCommit | None, self._commit.fullmatch(dependency.value)
         )
         if not match:
             return None
