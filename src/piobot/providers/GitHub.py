@@ -552,13 +552,16 @@ class Resolve:
             for _release in typing.cast(list[Release], response.json()):
                 try:
                     _version = packaging.version.Version(_release["tag_name"])
+                    _published_at = _release.get("published_at")
                     if (
-                        _version.is_prerelease and not prerelease
-                    ) or datetime.datetime.now(
-                        datetime.timezone.utc
-                    ) - datetime.datetime.fromisoformat(
-                        _release["published_at"].replace("Z", "+00:00")
-                    ) < datetime.timedelta(days=Models.Config.COOLDOWN):
+                        (_version.is_prerelease and not prerelease)
+                        or _published_at is None
+                        or datetime.datetime.now(datetime.timezone.utc)
+                        - datetime.datetime.fromisoformat(
+                            _published_at.replace("Z", "+00:00")
+                        )
+                        < datetime.timedelta(days=Models.Config.COOLDOWN)
+                    ):
                         continue
                     elif _version > version:
                         return _release

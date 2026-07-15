@@ -47,7 +47,7 @@ class Release(typing.TypedDict):
     assets: Assets
     commit: Commit
     created_at: str
-    released_at: str
+    released_at: str | None
     tag_name: str
     _links: Links
 
@@ -211,13 +211,17 @@ class Resolve:
             for _release in typing.cast(list[Release], response.json()):
                 try:
                     _version = packaging.version.Version(_release["tag_name"])
-                    created_at = _release["created_at"]
-                    released_at = _release.get("released_at") or created_at
+                    _created_at = _release["created_at"]
+                    _released_at = _release.get("released_at") or _created_at
                     if (
                         _version.is_prerelease and not version.is_prerelease
                     ) or datetime.datetime.now(datetime.timezone.utc) - max(
-                        datetime.datetime.fromisoformat(created_at.replace("Z", "+00:00")),
-                        datetime.datetime.fromisoformat(released_at.replace("Z", "+00:00")),
+                        datetime.datetime.fromisoformat(
+                            _created_at.replace("Z", "+00:00")
+                        ),
+                        datetime.datetime.fromisoformat(
+                            _released_at.replace("Z", "+00:00")
+                        ),
                     ) < datetime.timedelta(days=Models.Config.COOLDOWN):
                         continue
                     elif _version > version:
