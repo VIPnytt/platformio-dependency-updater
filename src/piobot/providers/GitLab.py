@@ -1,3 +1,4 @@
+import datetime
 import packaging.version
 import re
 import requests
@@ -7,6 +8,7 @@ from .. import Models
 
 
 class Commit(typing.TypedDict):
+    created_at: str
     id: str
     web_url: str
 
@@ -44,6 +46,8 @@ class Assets(typing.TypedDict):
 class Release(typing.TypedDict):
     assets: Assets
     commit: Commit
+    created_at: str
+    released_at: str
     tag_name: str
     _links: Links
 
@@ -207,7 +211,16 @@ class Resolve:
             for _release in typing.cast(list[Release], response.json()):
                 try:
                     _version = packaging.version.Version(_release["tag_name"])
-                    if _version.is_prerelease and not version.is_prerelease:
+                    if (
+                        _version.is_prerelease and not version.is_prerelease
+                    ) or datetime.datetime.now(datetime.timezone.utc) - max(
+                        datetime.datetime.fromisoformat(
+                            _release["created_at"].replace("Z", "+00:00")
+                        ),
+                        datetime.datetime.fromisoformat(
+                            _release["released_at"].replace("Z", "+00:00")
+                        ),
+                    ) < datetime.timedelta(days=Models.Config.COOLDOWN):
                         continue
                     elif _version > version:
                         return _release
@@ -232,7 +245,14 @@ class Resolve:
             for _tag in typing.cast(list[Tag], response.json()):
                 try:
                     _version = packaging.version.Version(_tag["name"])
-                    if _version.is_prerelease and not version.is_prerelease:
+                    _timestamp = datetime.datetime.fromisoformat(
+                        _tag["commit"]["created_at"]
+                    )
+                    if (
+                        _version.is_prerelease and not version.is_prerelease
+                    ) or datetime.datetime.now(
+                        _timestamp.tzinfo
+                    ) - _timestamp < datetime.timedelta(days=Models.Config.COOLDOWN):
                         continue
                     elif _version > version:
                         return _tag

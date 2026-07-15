@@ -10,6 +10,7 @@ A GitHub Action that checks `platformio.ini` for dependency updates and creates 
 * PRs include links to release notes and changelog when available
 * Applies the `dependencies` and `platformio` labels if they exist
 * Keeps PRs manageable with a maximum of 5 open dependency PRs
+* Built-in 3-day cooldown for new releases to avoid faulty versions
 * Pauses updates for inactive repositories after 3 months
 
 ## Limitations

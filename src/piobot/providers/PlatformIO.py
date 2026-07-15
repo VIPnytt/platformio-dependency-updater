@@ -1,3 +1,4 @@
+import datetime
 import enum
 import packaging.version
 import re
@@ -20,6 +21,7 @@ class Owner(typing.TypedDict):
 class Version(typing.TypedDict):
     files: list[File]
     name: str
+    released_at: str
 
 
 class Data(typing.TypedDict):
@@ -163,7 +165,13 @@ class Resolve:
         for _candidate in typing.cast(list[Version], data["versions"]):
             try:
                 _version = packaging.version.Version(_candidate["name"])
-                if _version.is_prerelease and not version.is_prerelease:
+                if (
+                    _version.is_prerelease and not version.is_prerelease
+                ) or datetime.datetime.now(
+                    datetime.timezone.utc
+                ) - datetime.datetime.fromisoformat(
+                    _candidate["released_at"].replace("Z", "+00:00")
+                ) < datetime.timedelta(days=Models.Config.COOLDOWN):
                     continue
                 elif _version > version:
                     return _candidate

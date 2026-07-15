@@ -1,3 +1,4 @@
+import datetime
 import os
 import packaging.version
 import re
@@ -15,6 +16,18 @@ class Asset(typing.TypedDict):
 class Commit(typing.TypedDict):
     sha: str
     url: str
+
+
+class Committer(typing.TypedDict):
+    date: str
+
+
+class CommitID(typing.TypedDict):
+    committer: Committer
+
+
+class CommitResponse(typing.TypedDict):
+    commit: CommitID
 
 
 class MatchCommit(typing.TypedDict):
@@ -47,6 +60,7 @@ class Release(typing.TypedDict):
     assets: list[Asset]
     html_url: str
     prerelease: bool
+    published_at: str
     tag_name: str
     tarball_url: str
     url: str
@@ -515,6 +529,14 @@ class Resolve:
         fragments = url.split("/", 6)
         return fragments[4], fragments[5]
 
+    def _request_commit_id(self, name: str, commit: str) -> CommitResponse:
+        return typing.cast(
+            CommitResponse,
+            self._request(
+                f"https://api.github.com/repos/{name}/commits/{commit}"
+            ).json(),
+        )
+
     def _request_release(self, name: str, tag: str) -> Release | None:
         version = packaging.version.Version(tag)
         prerelease = version.is_prerelease
@@ -527,19 +549,25 @@ class Resolve:
         url = f"https://api.github.com/repos/{name}/releases?per_page=100"
         while url:
             response = self._request(url)
-            for _tag in typing.cast(list[Release], response.json()):
+            for _release in typing.cast(list[Release], response.json()):
                 try:
-                    _version = packaging.version.Version(_tag["tag_name"])
-                    if _version.is_prerelease and not prerelease:
+                    _version = packaging.version.Version(_release["tag_name"])
+                    if (
+                        _version.is_prerelease and not prerelease
+                    ) or datetime.datetime.now(
+                        datetime.timezone.utc
+                    ) - datetime.datetime.fromisoformat(
+                        _release["published_at"].replace("Z", "+00:00")
+                    ) < datetime.timedelta(days=Models.Config.COOLDOWN):
                         continue
                     elif _version > version:
-                        return _tag
+                        return _release
                     elif not latest:
-                        latest = _tag
+                        latest = _release
                 except packaging.version.InvalidVersion:
-                    _owner, _repo = self._parse_link(_tag["url"])
+                    _owner, _repo = self._parse_link(_release["url"])
                     print(
-                        f"::debug::Invalid version: {_owner}/{_repo} {_tag['tag_name']}"
+                        f"::debug::Invalid version: {_owner}/{_repo} {_release['tag_name']}"
                     )
                     continue
             url = response.links.get("next", {}).get("url")
@@ -564,6 +592,15 @@ class Resolve:
                     if _version.is_prerelease and not version.is_prerelease:
                         continue
                     elif _version > version:
+                        _commit = self._request_commit_id(name, _tag["commit"]["sha"])
+                        if datetime.datetime.now(
+                            datetime.timezone.utc
+                        ) - datetime.datetime.fromisoformat(
+                            _commit["commit"]["committer"]["date"].replace(
+                                "Z", "+00:00"
+                            )
+                        ) < datetime.timedelta(days=Models.Config.COOLDOWN):
+                            continue
                         return _tag
                     elif not latest:
                         latest = _tag
