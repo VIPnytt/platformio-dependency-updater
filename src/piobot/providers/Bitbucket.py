@@ -1,3 +1,4 @@
+import datetime
 import packaging.version
 import re
 import requests
@@ -46,6 +47,7 @@ class Tag(typing.TypedDict):
 
 class Target(typing.TypedDict):
     author: Author
+    date: str
     hash: str
     repository: Repository
 
@@ -202,7 +204,14 @@ class Resolve:
             for _value in typing.cast(list[Value], response["values"]):
                 try:
                     _version = packaging.version.Version(_value["name"])
-                    if _version.is_prerelease and not version.is_prerelease:
+                    _timestamp = datetime.datetime.fromisoformat(
+                        _value["target"]["date"]
+                    )
+                    if (
+                        _version.is_prerelease and not version.is_prerelease
+                    ) or datetime.datetime.now(
+                        _timestamp.tzinfo
+                    ) - _timestamp < datetime.timedelta(days=Models.Config.COOLDOWN):
                         continue
                     elif _version > version:
                         return _value
