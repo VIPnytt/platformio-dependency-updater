@@ -103,10 +103,10 @@ class Resolve:
             MatchCommit | None, self._git_commit.fullmatch(dependency.value)
         )
         if not match:
-            return
+            return None
         release = self._request_release(match["name"], match["tag"])
         if not release:
-            return
+            return None
         owner, repo = self._parse_link(release["url"])
         commit = self._request_tag_id(owner, repo, release["tag_name"])["object"]["sha"]
         value = f"{'' if match['package'] is None else f'{match["package"]} @ '}{match['variant']}://github.com/{owner}/{repo}.git#{commit} ; {release['tag_name']}"
@@ -136,10 +136,10 @@ class Resolve:
             MatchTag | None, self._archive_tag.fullmatch(dependency.value)
         )
         if not match:
-            return
+            return None
         release = self._request_release(match["name"], match["tag"])
         if not release:
-            return
+            return None
         owner, repo = self._parse_link(release["url"])
         value = f"{'' if match['package'] is None else f'{match["package"]} @ '}https://github.com/{owner}/{repo}/archive/refs/tags/{release['tag_name']}.{match['variant']} ; {release['tag_name']}"
         return (
@@ -168,10 +168,10 @@ class Resolve:
             MatchDownload | None, self._download.fullmatch(dependency.value)
         )
         if not match:
-            return
+            return None
         release = self._request_release(match["name"], match["tag"])
         if not release:
-            return
+            return None
         names = {
             match["asset"],
             match["asset"].replace(match["tag"], release["tag_name"]),
@@ -205,10 +205,10 @@ class Resolve:
     ) -> Models.Result | str | None:
         match = typing.cast(MatchTag | None, self._ball_tag.fullmatch(dependency.value))
         if not match:
-            return
+            return None
         release = self._request_release(match["name"], match["tag"])
         if not release:
-            return
+            return None
         ball = release[f"{match['variant']}ball_url"]
         owner, repo = self._parse_link(ball)
         value = f"{'' if match['package'] is None else f'{match["package"]} @ '}{ball} ; {release['tag_name']}"
@@ -238,10 +238,10 @@ class Resolve:
             MatchCommit | None, self._archive_commit.fullmatch(dependency.value)
         )
         if not match:
-            return
+            return None
         release = self._request_release(match["name"], match["tag"])
         if not release:
-            return
+            return None
         owner, repo = self._parse_link(release["url"])
         commit = self._request_tag_id(owner, repo, release["tag_name"])["object"]["sha"]
         value = f"{'' if match['package'] is None else f'{match["package"]} @ '}https://github.com/{owner}/{repo}/archive/{commit}.{match['variant']} ; {release['tag_name']}"
@@ -271,10 +271,10 @@ class Resolve:
             MatchCommit | None, self._ball_commit.fullmatch(dependency.value)
         )
         if not match:
-            return
+            return None
         release = self._request_release(match["name"], match["tag"])
         if not release:
-            return
+            return None
         owner, repo = self._parse_link(release["url"])
         commit = self._request_tag_id(owner, repo, release["tag_name"])["object"]["sha"]
         value = f"{'' if match['package'] is None else f'{match["package"]} @ '}https://api.github.com/repos/{owner}/{repo}/{match['variant']}ball/{commit} ; {release['tag_name']}"
@@ -302,10 +302,10 @@ class Resolve:
     ) -> Models.Result | str | None:
         match = typing.cast(MatchTag | None, self._git_tag.fullmatch(dependency.value))
         if not match:
-            return
+            return None
         release = self._request_release(match["name"], match["tag"])
         if not release:
-            return
+            return None
         owner, repo = self._parse_link(release["url"])
         value = f"{'' if match['package'] is None else f'{match["package"]} @ '}{match['variant']}://github.com/{owner}/{repo}.git#{release['tag_name']} ; {release['tag_name']}"
         return (
@@ -332,11 +332,11 @@ class Resolve:
             MatchTag | None, self._archive_tag.fullmatch(dependency.value)
         )
         if not match:
-            return
+            return None
         version = packaging.version.Version(match["tag"])
         tag = self._request_tag(match["name"], version)
         if not tag:
-            return
+            return None
         owner, repo = self._parse_link(tag["commit"]["url"])
         value = f"{'' if match['package'] is None else f'{match["package"]} @ '}https://github.com/{owner}/{repo}/archive/refs/tags/{tag['name']}.{match['variant']} ; {tag['name']}"
         return (
@@ -360,11 +360,11 @@ class Resolve:
     def tag_ball(self, dependency: Models.Dependency) -> Models.Result | str | None:
         match = typing.cast(MatchTag | None, self._ball_tag.fullmatch(dependency.value))
         if not match:
-            return
+            return None
         version = packaging.version.Version(match["tag"])
         tag = self._request_tag(match["name"], version)
         if not tag:
-            return
+            return None
         ball = tag[f"{match['variant']}ball_url"]
         owner, repo = self._parse_link(ball)
         value = f"{'' if match['package'] is None else f'{match["package"]} @ '}{ball} ; {tag['name']}"
@@ -393,11 +393,11 @@ class Resolve:
             MatchCommit | None, self._archive_commit.fullmatch(dependency.value)
         )
         if not match:
-            return
+            return None
         version = packaging.version.Version(match["tag"])
         tag = self._request_tag(match["name"], version)
         if not tag:
-            return
+            return None
         owner, repo = self._parse_link(tag["commit"]["url"])
         value = f"{'' if match['package'] is None else f'{match["package"]} @ '}https://github.com/{owner}/{repo}/archive/{tag['commit']['sha']}.{match['variant']} ; {tag['name']}"
         return (
@@ -425,11 +425,11 @@ class Resolve:
             MatchCommit | None, self._ball_commit.fullmatch(dependency.value)
         )
         if not match:
-            return
+            return None
         version = packaging.version.Version(match["tag"])
         tag = self._request_tag(match["name"], version)
         if not tag:
-            return
+            return None
         owner, repo = self._parse_link(tag["commit"]["url"])
         value = f"{'' if match['package'] is None else f'{match["package"]} @ '}https://api.github.com/repos/{owner}/{repo}/{match['variant']}ball/{tag['commit']['sha']} ; {tag['name']}"
         return (
@@ -457,11 +457,11 @@ class Resolve:
             MatchCommit | None, self._git_commit.fullmatch(dependency.value)
         )
         if not match:
-            return
+            return None
         version = packaging.version.Version(match["tag"])
         tag = self._request_tag(match["name"], version)
         if not tag:
-            return
+            return None
         owner, repo = self._parse_link(tag["commit"]["url"])
         value = f"{'' if match['package'] is None else f'{match["package"]} @ '}{match['variant']}://github.com/{owner}/{repo}.git#{tag['commit']['sha']} ; {tag['name']}"
         return (
@@ -485,11 +485,11 @@ class Resolve:
     def tag_git(self, dependency: Models.Dependency) -> Models.Result | str | None:
         match = typing.cast(MatchTag | None, self._git_tag.fullmatch(dependency.value))
         if not match:
-            return
+            return None
         version = packaging.version.Version(match["tag"])
         tag = self._request_tag(match["name"], version)
         if not tag:
-            return
+            return None
         owner, repo = self._parse_link(tag["commit"]["url"])
         value = f"{'' if match['package'] is None else f'{match["package"]} @ '}{match['variant']}://github.com/{owner}/{repo}.git#{tag['name']} ; {tag['name']}"
         return (

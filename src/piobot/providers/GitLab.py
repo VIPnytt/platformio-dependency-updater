@@ -72,11 +72,11 @@ class Resolve:
             self._tag.fullmatch(dependency.value),
         )
         if not match:
-            return
+            return None
         version = packaging.version.Version(match["tag"])
         release = self._request_release(match["owner"], match["repo"], version)
         if release is None:
-            return
+            return None
         owner, repo = self._parse_link(release["_links"]["self"])
         for source in release["assets"]["sources"]:
             if source["format"] != match["variant"]:
@@ -108,11 +108,11 @@ class Resolve:
             self._tag.fullmatch(dependency.value),
         )
         if not match:
-            return
+            return None
         version = packaging.version.Version(match["tag"])
         release = self._request_release(match["owner"], match["repo"], version)
         if release is None:
-            return
+            return None
         owner, repo = self._parse_link(release["_links"]["self"])
         for source in release["assets"]["sources"]:
             if source["format"] != match["variant"]:
@@ -142,11 +142,11 @@ class Resolve:
             self._tag.fullmatch(dependency.value),
         )
         if not match:
-            return
+            return None
         version = packaging.version.Version(match["tag"])
         tag = self._request_tag(match["owner"], match["repo"], version)
         if tag is None:
-            return
+            return None
         owner, repo = self._parse_link(tag["commit"]["web_url"])
         value = f"{'' if match['package'] is None else f'{match["package"]} @ '}https://gitlab.com/{owner}/{repo}/-/archive/{tag['name']}/{repo}-{tag['name']}.{match['variant']} ; {tag['name']}"
         return (
@@ -173,11 +173,11 @@ class Resolve:
             self._tag.fullmatch(dependency.value),
         )
         if not match:
-            return
+            return None
         version = packaging.version.Version(match["tag"])
         tag = self._request_tag(match["owner"], match["repo"], version)
         if tag is None:
-            return
+            return None
         owner, repo = self._parse_link(tag["commit"]["web_url"])
         value = f"{'' if match['package'] is None else f'{match["package"]} @ '}https://gitlab.com/{owner}/{repo}/-/archive/{tag['commit']['id']}/{repo}-{tag['commit']['id']}.{match['variant']} ; {tag['name']}"
         return (

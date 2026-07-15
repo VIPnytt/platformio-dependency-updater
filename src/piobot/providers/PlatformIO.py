@@ -69,14 +69,14 @@ class Resolve:
     def api(self, dependency: Models.Dependency) -> Models.Result | str | None:
         match = typing.cast(Download | None, self._api.fullmatch(dependency.value))
         if not match:
-            return
+            return None
         version = packaging.version.Version(match["version"])
         data = self._request_package_version(
             dependency.option, match["owner"], match["name"], match["version"]
         )
         _version = self._parse(data, version)
         if _version is None:
-            return
+            return None
         system = self._system(data["version"]["files"], match["file"])
         for file in _version["files"]:
             if file["system"] != system:
@@ -101,14 +101,14 @@ class Resolve:
     def download(self, dependency: Models.Dependency) -> Models.Result | str | None:
         match = typing.cast(Download | None, self._download.fullmatch(dependency.value))
         if not match:
-            return
+            return None
         version = packaging.version.Version(match["version"])
         data = self._request_package_version(
             dependency.option, match["owner"], match["name"], match["version"]
         )
         _version = self._parse(data, version)
         if _version is None:
-            return
+            return None
         system = self._system(data["version"]["files"], match["file"])
         for file in _version["files"]:
             if file["system"] != system:
@@ -133,12 +133,12 @@ class Resolve:
     def package(self, dependency: Models.Dependency) -> Models.Result | str | None:
         match = typing.cast(Package | None, self._package.fullmatch(dependency.value))
         if not match:
-            return
+            return None
         version = packaging.version.Version(match["version"])
         data = self._request_package(dependency.option, match["owner"], match["name"])
         _version = self._parse(data, version)
         if _version is None:
-            return
+            return None
         value = f"{data['owner']['username']}/{data['name']} @ {_version['name']}"
         if packaging.version.Version(_version["name"]) > version:
             type = self._type_html(data["type"])

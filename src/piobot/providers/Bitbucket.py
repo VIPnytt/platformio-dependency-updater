@@ -85,11 +85,11 @@ class Resolve:
             Commit | None, self._name_commit.fullmatch(dependency.value)
         )
         if not match:
-            return
+            return None
         version = packaging.version.Version(match["tag"])
         tag = self._request_tag(match["name"], version)
         if tag is None:
-            return
+            return None
         value = f"{'' if match['package'] is None else f'{match["package"]} @ '}{tag['target']['repository']['links']['html']['href']}/get/{tag['target']['hash']}.{match['variant']} ; {tag['name']}"
         return (
             Models.Result(
@@ -112,11 +112,11 @@ class Resolve:
     def name_tag(self, dependency: Models.Dependency) -> Models.Result | str | None:
         match = typing.cast(Tag | None, self._name_tag.fullmatch(dependency.value))
         if not match:
-            return
+            return None
         version = packaging.version.Version(match["tag"])
         tag = self._request_tag(match["name"], version)
         if tag is None:
-            return
+            return None
         value = f"{'' if match['package'] is None else f'{match["package"]} @ '}{tag['target']['repository']['links']['html']['href']}/get/{tag['name']}.{match['variant']} ; {tag['name']}"
         return (
             Models.Result(
@@ -141,11 +141,11 @@ class Resolve:
             Commit | None, self._uuid_commit.fullmatch(dependency.value)
         )
         if not match:
-            return
+            return None
         version = packaging.version.Version(match["tag"])
         tag = self._request_tag(match["name"], version)
         if tag is None:
-            return
+            return None
         value = f"{'' if match['package'] is None else f'{match["package"]} @ '}https://bitbucket.org/{urllib.parse.quote(tag['target']['author']['user']['uuid'])}/{urllib.parse.quote(tag['target']['repository']['uuid'])}/get/{tag['target']['hash']}.{match['variant']} ; {tag['target']['repository']['full_name']} {tag['name']}"
         return (
             Models.Result(
@@ -168,11 +168,11 @@ class Resolve:
     def uuid_tag(self, dependency: Models.Dependency) -> Models.Result | str | None:
         match = typing.cast(Tag | None, self._uuid_tag.fullmatch(dependency.value))
         if not match:
-            return
+            return None
         version = packaging.version.Version(match["tag"])
         tag = self._request_tag(match["name"], version)
         if tag is None:
-            return
+            return None
         value = f"{'' if match['package'] is None else f'{match["package"]} @ '}https://bitbucket.org/{urllib.parse.quote(tag['target']['author']['user']['uuid'])}/{urllib.parse.quote(tag['target']['repository']['uuid'])}/get/{tag['name']}.{match['variant']} ; {tag['target']['repository']['full_name']} {tag['name']}"
         return (
             Models.Result(
