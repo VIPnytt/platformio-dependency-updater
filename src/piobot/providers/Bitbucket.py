@@ -83,9 +83,7 @@ class Resolve:
         )
 
     def name_commit(self, dependency: Models.Dependency) -> Models.Result | str | None:
-        match = typing.cast(
-            Commit | None, self._name_commit.fullmatch(dependency.value)
-        )
+        match = typing.cast(Commit | None, self._name_commit.fullmatch(dependency.value))
         if not match:
             return None
         version = packaging.version.Version(match["tag"])
@@ -139,9 +137,7 @@ class Resolve:
         )
 
     def uuid_commit(self, dependency: Models.Dependency) -> Models.Result | str | None:
-        match = typing.cast(
-            Commit | None, self._uuid_commit.fullmatch(dependency.value)
-        )
+        match = typing.cast(Commit | None, self._uuid_commit.fullmatch(dependency.value))
         if not match:
             return None
         version = packaging.version.Version(match["tag"])
@@ -194,9 +190,7 @@ class Resolve:
             else f"{dependency.option} = {value}"
         )
 
-    def _request_tag(
-        self, name: str, version: packaging.version.Version
-    ) -> Value | None:
+    def _request_tag(self, name: str, version: packaging.version.Version) -> Value | None:
         latest = None
         url = f"https://api.bitbucket.org/2.0/repositories/{name}/refs/tags?sort=-target.date&pagelen=100"
         while url:
@@ -204,12 +198,8 @@ class Resolve:
             for _value in typing.cast(list[Value], response["values"]):
                 try:
                     _version = packaging.version.Version(_value["name"])
-                    _timestamp = datetime.datetime.fromisoformat(
-                        _value["target"]["date"]
-                    )
-                    if (
-                        _version.is_prerelease and not version.is_prerelease
-                    ) or datetime.datetime.now(
+                    _timestamp = datetime.datetime.fromisoformat(_value["target"]["date"])
+                    if (_version.is_prerelease and not version.is_prerelease) or datetime.datetime.now(
                         _timestamp.tzinfo
                     ) - _timestamp < datetime.timedelta(days=Models.Config.COOLDOWN):
                         continue
@@ -218,9 +208,7 @@ class Resolve:
                     elif not latest:
                         latest = _value
                 except packaging.version.InvalidVersion:
-                    print(
-                        f"::debug::Invalid version: {_value['target']['repository']['full_name']} {_value['name']}"
-                    )
+                    print(f"::debug::Invalid version: {_value['target']['repository']['full_name']} {_value['name']}")
                     continue
             url = response["next"] if "next" in response else None
         return latest

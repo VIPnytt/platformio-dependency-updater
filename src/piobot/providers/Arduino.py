@@ -80,8 +80,6 @@ class Resolve:
                 elif not latest:
                     latest = _library
             except packaging.version.InvalidVersion:
-                print(
-                    f"::debug::Invalid version: {_library['name']} {_library['version']}"
-                )
+                print(f"::debug::Invalid version: {_library['name']} {_library['version']}")
                 continue
         return latest
