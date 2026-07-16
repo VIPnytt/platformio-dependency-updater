@@ -31,14 +31,13 @@ on:
   schedule:
     - cron: "0 9 * * 1" # Mondays at 09:00 UTC
 
-permissions:
-  contents: write      # Required for creating branches and pushing commits
-  pull-requests: write # Required for creating pull requests
-
 jobs:
   platformio:
     name: Update PlatformIO dependencies
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-slim
+    permissions:
+      contents: write      # Required for creating branches and pushing commits
+      pull-requests: write # Required for creating and modifying pull requests
 
     steps:
       - name: Checkout the repository
@@ -79,6 +78,18 @@ The same applies to other dependency formats where the version cannot be directl
 
 If a dependency cannot be resolved, it will be reported as an unresolved dependency in the workflow summary. This usually indicates that a version comment is required or that the dependency format is not currently supported.
 
-### Pull request does not appear
+### Pull requests does not appear
 
-Go to the repository's **Settings** > **Actions** > **General** and ensure that GitHub Actions has permission to create pull requests. The workflow also needs to have `contents: write` and `pull-requests: write` permissions.
+Ensure the workflow has write permissions and that it has permission to create pull requests.
+
+```yaml
+permissions:
+  contents: write
+  pull-requests: write
+```
+
+Repository > Settings > Actions > General:
+
+> :ballot_box_with_check: Allow GitHub Actions to create and approve pull requests
+
+If GitHub Actions was previously unable to create pull requests due to insufficient permissions, `dependabot/platformio/`-prefixed branches may have been left behind. Delete any existing branches before rerunning the workflow.
