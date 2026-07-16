@@ -230,7 +230,6 @@ class Piobot:
         for label in repo.get_labels():
             if label.name.lower() in {"dependencies", "platformio"}:
                 pr.add_to_labels(label)
-        pr.add_to_labels()
         if _pr is not None:
             _pr.create_issue_comment(f"Superseded by #{pr.number}.")
             _pr.edit(state="closed")
