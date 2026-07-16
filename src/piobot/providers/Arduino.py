@@ -43,7 +43,7 @@ class Resolve:
             response.raise_for_status()
             self._data = typing.cast(Data, response.json())
         except Exception:
-            self._data["libraries"] = []
+            self._data = typing.cast(Data, {"libraries": []})
 
     def library(self, dependency: Models.Dependency) -> Models.Result | str | None:
         match = typing.cast(Match | None, self._libraries.fullmatch(dependency.value))
