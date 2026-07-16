@@ -110,12 +110,8 @@ class Resolve:
             r"^(?:(?P<package>(?:[^/\s]+/)?[^/\s]+)?\s*@\s*)?(?P<variant>git|git\+https|git\+ssh|https)://github\.com/(?P<name>[^/\s]+/[^/\s]+)\.git#(?P<tag>[^/\s]+)(?:\s*;.*)?$"
         )
 
-    def release_commit_git(
-        self, dependency: Models.Dependency
-    ) -> Models.Result | str | None:
-        match = typing.cast(
-            MatchCommit | None, self._git_commit.fullmatch(dependency.value)
-        )
+    def release_commit_git(self, dependency: Models.Dependency) -> Models.Result | str | None:
+        match = typing.cast(MatchCommit | None, self._git_commit.fullmatch(dependency.value))
         if not match:
             return None
         release = self._request_release(match["name"], match["tag"])
@@ -138,17 +134,12 @@ class Resolve:
                 version_from=match["tag"].removeprefix("v"),
                 version_to=release["tag_name"].removeprefix("v"),
             )
-            if packaging.version.Version(release["tag_name"])
-            > packaging.version.Version(match["tag"])
+            if packaging.version.Version(release["tag_name"]) > packaging.version.Version(match["tag"])
             else f"{dependency.option} = {value}"
         )
 
-    def release_tag_archive(
-        self, dependency: Models.Dependency
-    ) -> Models.Result | str | None:
-        match = typing.cast(
-            MatchTag | None, self._archive_tag.fullmatch(dependency.value)
-        )
+    def release_tag_archive(self, dependency: Models.Dependency) -> Models.Result | str | None:
+        match = typing.cast(MatchTag | None, self._archive_tag.fullmatch(dependency.value))
         if not match:
             return None
         release = self._request_release(match["name"], match["tag"])
@@ -170,17 +161,12 @@ class Resolve:
                 version_from=match["tag"].removeprefix("v"),
                 version_to=release["tag_name"].removeprefix("v"),
             )
-            if packaging.version.Version(release["tag_name"])
-            > packaging.version.Version(match["tag"])
+            if packaging.version.Version(release["tag_name"]) > packaging.version.Version(match["tag"])
             else f"{dependency.option} = {value}"
         )
 
-    def release_tag_asset(
-        self, dependency: Models.Dependency
-    ) -> Models.Result | str | None:
-        match = typing.cast(
-            MatchDownload | None, self._download.fullmatch(dependency.value)
-        )
+    def release_tag_asset(self, dependency: Models.Dependency) -> Models.Result | str | None:
+        match = typing.cast(MatchDownload | None, self._download.fullmatch(dependency.value))
         if not match:
             return None
         release = self._request_release(match["name"], match["tag"])
@@ -209,15 +195,12 @@ class Resolve:
                     version_from=match["tag"].removeprefix("v"),
                     version_to=release["tag_name"].removeprefix("v"),
                 )
-                if packaging.version.Version(release["tag_name"])
-                > packaging.version.Version(match["tag"])
+                if packaging.version.Version(release["tag_name"]) > packaging.version.Version(match["tag"])
                 else f"{dependency.option} = {value}"
             )
         return None
 
-    def release_tag_ball(
-        self, dependency: Models.Dependency
-    ) -> Models.Result | str | None:
+    def release_tag_ball(self, dependency: Models.Dependency) -> Models.Result | str | None:
         match = typing.cast(MatchTag | None, self._ball_tag.fullmatch(dependency.value))
         if not match:
             return None
@@ -241,17 +224,12 @@ class Resolve:
                 version_from=match["tag"].removeprefix("v"),
                 version_to=release["tag_name"].removeprefix("v"),
             )
-            if packaging.version.Version(release["tag_name"])
-            > packaging.version.Version(match["tag"])
+            if packaging.version.Version(release["tag_name"]) > packaging.version.Version(match["tag"])
             else f"{dependency.option} = {value}"
         )
 
-    def release_tag_commit_archive(
-        self, dependency: Models.Dependency
-    ) -> Models.Result | str | None:
-        match = typing.cast(
-            MatchCommit | None, self._archive_commit.fullmatch(dependency.value)
-        )
+    def release_tag_commit_archive(self, dependency: Models.Dependency) -> Models.Result | str | None:
+        match = typing.cast(MatchCommit | None, self._archive_commit.fullmatch(dependency.value))
         if not match:
             return None
         release = self._request_release(match["name"], match["tag"])
@@ -274,17 +252,12 @@ class Resolve:
                 version_from=match["tag"].removeprefix("v"),
                 version_to=release["tag_name"].removeprefix("v"),
             )
-            if packaging.version.Version(release["tag_name"])
-            > packaging.version.Version(match["tag"])
+            if packaging.version.Version(release["tag_name"]) > packaging.version.Version(match["tag"])
             else f"{dependency.option} = {value}"
         )
 
-    def release_tag_commit_ball(
-        self, dependency: Models.Dependency
-    ) -> Models.Result | str | None:
-        match = typing.cast(
-            MatchCommit | None, self._ball_commit.fullmatch(dependency.value)
-        )
+    def release_tag_commit_ball(self, dependency: Models.Dependency) -> Models.Result | str | None:
+        match = typing.cast(MatchCommit | None, self._ball_commit.fullmatch(dependency.value))
         if not match:
             return None
         release = self._request_release(match["name"], match["tag"])
@@ -307,14 +280,11 @@ class Resolve:
                 version_from=match["tag"].removeprefix("v"),
                 version_to=release["tag_name"].removeprefix("v"),
             )
-            if packaging.version.Version(release["tag_name"])
-            > packaging.version.Version(match["tag"])
+            if packaging.version.Version(release["tag_name"]) > packaging.version.Version(match["tag"])
             else f"{dependency.option} = {value}"
         )
 
-    def release_tag_git(
-        self, dependency: Models.Dependency
-    ) -> Models.Result | str | None:
+    def release_tag_git(self, dependency: Models.Dependency) -> Models.Result | str | None:
         match = typing.cast(MatchTag | None, self._git_tag.fullmatch(dependency.value))
         if not match:
             return None
@@ -337,15 +307,12 @@ class Resolve:
                 version_from=match["tag"].removeprefix("v"),
                 version_to=release["tag_name"].removeprefix("v"),
             )
-            if packaging.version.Version(release["tag_name"])
-            > packaging.version.Version(match["tag"])
+            if packaging.version.Version(release["tag_name"]) > packaging.version.Version(match["tag"])
             else f"{dependency.option} = {value}"
         )
 
     def tag_archive(self, dependency: Models.Dependency) -> Models.Result | str | None:
-        match = typing.cast(
-            MatchTag | None, self._archive_tag.fullmatch(dependency.value)
-        )
+        match = typing.cast(MatchTag | None, self._archive_tag.fullmatch(dependency.value))
         if not match:
             return None
         version = packaging.version.Version(match["tag"])
@@ -401,12 +368,8 @@ class Resolve:
             else f"{dependency.option} = {value}"
         )
 
-    def tag_commit_archive(
-        self, dependency: Models.Dependency
-    ) -> Models.Result | str | None:
-        match = typing.cast(
-            MatchCommit | None, self._archive_commit.fullmatch(dependency.value)
-        )
+    def tag_commit_archive(self, dependency: Models.Dependency) -> Models.Result | str | None:
+        match = typing.cast(MatchCommit | None, self._archive_commit.fullmatch(dependency.value))
         if not match:
             return None
         version = packaging.version.Version(match["tag"])
@@ -433,12 +396,8 @@ class Resolve:
             else f"{dependency.option} = {value}"
         )
 
-    def tag_commit_ball(
-        self, dependency: Models.Dependency
-    ) -> Models.Result | str | None:
-        match = typing.cast(
-            MatchCommit | None, self._ball_commit.fullmatch(dependency.value)
-        )
+    def tag_commit_ball(self, dependency: Models.Dependency) -> Models.Result | str | None:
+        match = typing.cast(MatchCommit | None, self._ball_commit.fullmatch(dependency.value))
         if not match:
             return None
         version = packaging.version.Version(match["tag"])
@@ -465,12 +424,8 @@ class Resolve:
             else f"{dependency.option} = {value}"
         )
 
-    def tag_commit_git(
-        self, dependency: Models.Dependency
-    ) -> Models.Result | str | None:
-        match = typing.cast(
-            MatchCommit | None, self._git_commit.fullmatch(dependency.value)
-        )
+    def tag_commit_git(self, dependency: Models.Dependency) -> Models.Result | str | None:
+        match = typing.cast(MatchCommit | None, self._git_commit.fullmatch(dependency.value))
         if not match:
             return None
         version = packaging.version.Version(match["tag"])
@@ -532,9 +487,7 @@ class Resolve:
     def _request_commit_id(self, name: str, commit: str) -> CommitResponse:
         return typing.cast(
             CommitResponse,
-            self._request(
-                f"https://api.github.com/repos/{name}/commits/{commit}"
-            ).json(),
+            self._request(f"https://api.github.com/repos/{name}/commits/{commit}").json(),
         )
 
     def _request_release(self, name: str, tag: str) -> Release | None:
@@ -557,9 +510,7 @@ class Resolve:
                         (_version.is_prerelease and not prerelease)
                         or _published_at is None
                         or datetime.datetime.now(datetime.timezone.utc)
-                        - datetime.datetime.fromisoformat(
-                            _published_at.replace("Z", "+00:00")
-                        )
+                        - datetime.datetime.fromisoformat(_published_at.replace("Z", "+00:00"))
                         < datetime.timedelta(days=Models.Config.COOLDOWN)
                     ):
                         continue
@@ -569,9 +520,7 @@ class Resolve:
                         latest = _release
                 except packaging.version.InvalidVersion:
                     _owner, _repo = self._parse_link(_release["url"])
-                    print(
-                        f"::debug::Invalid version: {_owner}/{_repo} {_release['tag_name']}"
-                    )
+                    print(f"::debug::Invalid version: {_owner}/{_repo} {_release['tag_name']}")
                     continue
             url = response.links.get("next", {}).get("url")
         return latest
@@ -579,9 +528,7 @@ class Resolve:
     def _request_release_id(self, name: str, tag: str) -> Release:
         return typing.cast(
             Release,
-            self._request(
-                f"https://api.github.com/repos/{name}/releases/tags/{tag}"
-            ).json(),
+            self._request(f"https://api.github.com/repos/{name}/releases/tags/{tag}").json(),
         )
 
     def _request_tag(self, name: str, version: packaging.version.Version) -> Tag | None:
@@ -596,12 +543,8 @@ class Resolve:
                         continue
                     elif _version > version:
                         _commit = self._request_commit_id(name, _tag["commit"]["sha"])
-                        if datetime.datetime.now(
-                            datetime.timezone.utc
-                        ) - datetime.datetime.fromisoformat(
-                            _commit["commit"]["committer"]["date"].replace(
-                                "Z", "+00:00"
-                            )
+                        if datetime.datetime.now(datetime.timezone.utc) - datetime.datetime.fromisoformat(
+                            _commit["commit"]["committer"]["date"].replace("Z", "+00:00")
                         ) < datetime.timedelta(days=Models.Config.COOLDOWN):
                             continue
                         return _tag
@@ -617,9 +560,7 @@ class Resolve:
     def _request_tag_id(self, owner: str, repo: str, tag: str) -> TagID:
         return typing.cast(
             TagID,
-            self._request(
-                f"https://api.github.com/repos/{owner}/{repo}/git/refs/tags/{tag}"
-            ).json(),
+            self._request(f"https://api.github.com/repos/{owner}/{repo}/git/refs/tags/{tag}").json(),
         )
 
     def _request(self, url: str) -> requests.Response:

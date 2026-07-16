@@ -32,26 +32,18 @@ class Piobot:
             self._git.head.commit.committed_datetime.tzinfo
         ) - self._git.head.commit.committed_datetime > datetime.timedelta(days=90):
             return None
-        self._git.config_writer().set_value(
-            "user", "name", "github-actions[bot]"
-        ).release()
+        self._git.config_writer().set_value("user", "name", "github-actions[bot]").release()
         self._git.config_writer().set_value(
             "user", "email", "41898282+github-actions[bot]@users.noreply.github.com"
         ).release()
-        self._git.remote().set_url(
-            f"https://x-access-token:{self._token}@github.com/{self.repository}.git"
-        )
+        self._git.remote().set_url(f"https://x-access-token:{self._token}@github.com/{self.repository}.git")
         self._github = github.Github(auth=github.Auth.Token(self._token))
         i = 0
         option: Models.Option | None = None
         with open(Models.Config.FILE, encoding="utf-8") as file:
             for line in file:
                 i += 1
-                if (
-                    line.startswith(";")
-                    or line.startswith("#")
-                    or len(line.strip()) == 0
-                ):
+                if line.startswith(";") or line.startswith("#") or len(line.strip()) == 0:
                     continue
                 elif line.startswith("\t") or line.startswith("  "):
                     _line = line.strip()
@@ -61,9 +53,7 @@ class Piobot:
                         and not _line.startswith(";")
                         and not _line.startswith("#")
                     ):
-                        self.dependencies.append(
-                            Models.Dependency(line=i, option=option, value=_line)
-                        )
+                        self.dependencies.append(Models.Dependency(line=i, option=option, value=_line))
                     continue
                 key, _, value = line.partition("=")
                 _key = key.rstrip()
@@ -174,15 +164,11 @@ class Piobot:
             if len(self.dependencies) == 0:
                 break
 
-    def _handle(
-        self, dependency: Models.Dependency, result: Models.Result | str | None
-    ) -> None:
+    def _handle(self, dependency: Models.Dependency, result: Models.Result | str | None) -> None:
         if isinstance(result, str):
             print(f"::debug::{result}")
         elif isinstance(result, Models.Result):
-            print(
-                f"::notice file={Models.Config.FILE},line={dependency.line},title=Update available::{result.value}"
-            )
+            print(f"::notice file={Models.Config.FILE},line={dependency.line},title=Update available::{result.value}")
             self._bump(dependency, result)
         else:
             return None
@@ -193,29 +179,14 @@ class Piobot:
         if head in self._git.heads:
             return None
         repo = self._github.get_repo(self.repository)
-        if (
-            repo.get_pulls(
-                base=self.ref, head=f"{repo.owner.login}:{head}", state="all"
-            ).totalCount
-            > 0
-        ):
+        if repo.get_pulls(base=self.ref, head=f"{repo.owner.login}:{head}", state="all").totalCount > 0:
             return None
         open = repo.get_pulls(base=self.ref, state="open")
         _pr = next(
-            (
-                pr
-                for pr in open
-                if pr.head.ref.startswith(f"dependabot/platformio/{result.package}-")
-            ),
+            (pr for pr in open if pr.head.ref.startswith(f"dependabot/platformio/{result.package}-")),
             None,
         )
-        if (
-            _pr is None
-            and sum(
-                1 for pr in open if pr.head.ref.startswith("dependabot/platformio/")
-            )
-            >= 5
-        ):
+        if _pr is None and sum(1 for pr in open if pr.head.ref.startswith("dependabot/platformio/")) >= 5:
             return None
         self._git.head.set_reference(self._git.create_head(head, self.ref))
         self._git.head.reset(index=True, working_tree=True)
@@ -223,15 +194,9 @@ class Piobot:
         with fileinput.FileInput(Models.Config.FILE, True) as file:
             for line in file:
                 i += 1
-                sys.stdout.write(
-                    line.replace(dependency.value, result.value)
-                    if i == dependency.line
-                    else line
-                )
+                sys.stdout.write(line.replace(dependency.value, result.value) if i == dependency.line else line)
         self._git.index.add(Models.Config.FILE)
-        self._git.index.commit(
-            f"Bump {result.package} from {result.version_from} to {result.version_to}"
-        )
+        self._git.index.commit(f"Bump {result.package} from {result.version_from} to {result.version_to}")
         self._git.remote().push(head).raise_if_error()
         pr = repo.create_pull(
             base=self.ref,

@@ -64,18 +64,14 @@ class Resolve:
         self._download = re.compile(
             r"^(?:(?P<package>(?:[^/\s]+/)?[^/\s]+)?\s*@\s*)?https://dl\.registry\.platformio\.org/download/(?P<owner>[^/\s]+)/(?:library|platform|tool)/(?P<name>[^/\s]+)/(?P<version>[^/\s]+)/(?P<file>[^/\s]+)(?:\s*;.*)?$"
         )
-        self._package = re.compile(
-            r"^(?P<owner>[^/\s]+)/(?P<name>[^/\s]+?)\s*@\s*(?P<version>[^\s]*)\S*(?:\s*;.*)?$"
-        )
+        self._package = re.compile(r"^(?P<owner>[^/\s]+)/(?P<name>[^/\s]+?)\s*@\s*(?P<version>[^\s]*)\S*(?:\s*;.*)?$")
 
     def api(self, dependency: Models.Dependency) -> Models.Result | str | None:
         match = typing.cast(Download | None, self._api.fullmatch(dependency.value))
         if not match:
             return None
         version = packaging.version.Version(match["version"])
-        data = self._request_package_version(
-            dependency.option, match["owner"], match["name"], match["version"]
-        )
+        data = self._request_package_version(dependency.option, match["owner"], match["name"], match["version"])
         _version = self._parse(data, version)
         if _version is None:
             return None
@@ -106,9 +102,7 @@ class Resolve:
         if not match:
             return None
         version = packaging.version.Version(match["version"])
-        data = self._request_package_version(
-            dependency.option, match["owner"], match["name"], match["version"]
-        )
+        data = self._request_package_version(dependency.option, match["owner"], match["name"], match["version"])
         _version = self._parse(data, version)
         if _version is None:
             return None
@@ -165,9 +159,7 @@ class Resolve:
         for _candidate in typing.cast(list[Version], data["versions"]):
             try:
                 _version = packaging.version.Version(_candidate["name"])
-                if (
-                    _version.is_prerelease and not version.is_prerelease
-                ) or datetime.datetime.now(
+                if (_version.is_prerelease and not version.is_prerelease) or datetime.datetime.now(
                     datetime.timezone.utc
                 ) - datetime.datetime.fromisoformat(
                     _candidate["released_at"].replace("Z", "+00:00")
@@ -178,9 +170,7 @@ class Resolve:
                 elif not latest:
                     latest = _candidate
             except packaging.version.InvalidVersion:
-                print(
-                    f"::debug::Invalid version: {data['owner']['username']}/{data['name']} {_candidate['name']}"
-                )
+                print(f"::debug::Invalid version: {data['owner']['username']}/{data['name']} {_candidate['name']}")
                 continue
         return latest
 
@@ -192,9 +182,7 @@ class Resolve:
             ).json(),
         )
 
-    def _request_package_version(
-        self, option: str, owner: str, name: str, version: str
-    ) -> Data:
+    def _request_package_version(self, option: str, owner: str, name: str, version: str) -> Data:
         return typing.cast(
             Data,
             self._request(

@@ -81,7 +81,9 @@ class Resolve:
         for source in release["assets"]["sources"]:
             if source["format"] != match["variant"]:
                 continue
-            value = f"{'' if match['package'] is None else f'{match["package"]} @ '}{source['url']} ; {release['tag_name']}"
+            value = (
+                f"{'' if match['package'] is None else f'{match["package"]} @ '}{source['url']} ; {release['tag_name']}"
+            )
             return (
                 Models.Result(
                     body="\n".join(
@@ -101,12 +103,8 @@ class Resolve:
             )
         return None
 
-    def release_tag_commit(
-        self, dependency: Models.Dependency
-    ) -> Models.Result | str | None:
-        match = typing.cast(
-            MatchCommit | None, self._commit.fullmatch(dependency.value)
-        )
+    def release_tag_commit(self, dependency: Models.Dependency) -> Models.Result | str | None:
+        match = typing.cast(MatchCommit | None, self._commit.fullmatch(dependency.value))
         if not match:
             return None
         version = packaging.version.Version(match["tag"])
@@ -166,9 +164,7 @@ class Resolve:
         )
 
     def tag_commit(self, dependency: Models.Dependency) -> Models.Result | str | None:
-        match = typing.cast(
-            MatchCommit | None, self._commit.fullmatch(dependency.value)
-        )
+        match = typing.cast(MatchCommit | None, self._commit.fullmatch(dependency.value))
         if not match:
             return None
         version = packaging.version.Version(match["tag"])
@@ -199,13 +195,9 @@ class Resolve:
         fragments = url.split("/", 5)
         return fragments[3], fragments[4]
 
-    def _request_release(
-        self, owner: str, repo: str, version: packaging.version.Version
-    ) -> Release | None:
+    def _request_release(self, owner: str, repo: str, version: packaging.version.Version) -> Release | None:
         latest = None
-        url = (
-            f"https://gitlab.com/api/v4/projects/{owner}%2F{repo}/releases?per_page=100"
-        )
+        url = f"https://gitlab.com/api/v4/projects/{owner}%2F{repo}/releases?per_page=100"
         while url:
             response = self._request(url)
             for _release in typing.cast(list[Release], response.json()):
@@ -213,15 +205,11 @@ class Resolve:
                     _version = packaging.version.Version(_release["tag_name"])
                     _created_at = _release["created_at"]
                     _released_at = _release.get("released_at") or _created_at
-                    if (
-                        _version.is_prerelease and not version.is_prerelease
-                    ) or datetime.datetime.now(datetime.timezone.utc) - max(
-                        datetime.datetime.fromisoformat(
-                            _created_at.replace("Z", "+00:00")
-                        ),
-                        datetime.datetime.fromisoformat(
-                            _released_at.replace("Z", "+00:00")
-                        ),
+                    if (_version.is_prerelease and not version.is_prerelease) or datetime.datetime.now(
+                        datetime.timezone.utc
+                    ) - max(
+                        datetime.datetime.fromisoformat(_created_at.replace("Z", "+00:00")),
+                        datetime.datetime.fromisoformat(_released_at.replace("Z", "+00:00")),
                     ) < datetime.timedelta(days=Models.Config.COOLDOWN):
                         continue
                     elif _version > version:
@@ -230,16 +218,12 @@ class Resolve:
                         latest = _release
                 except packaging.version.InvalidVersion:
                     _owner, _repo = self._parse_link(_release["commit"]["web_url"])
-                    print(
-                        f"::debug::Invalid version: {_owner}/{_repo} {_release['tag_name']}"
-                    )
+                    print(f"::debug::Invalid version: {_owner}/{_repo} {_release['tag_name']}")
                     continue
             url = response.links.get("next", {}).get("url")
         return latest
 
-    def _request_tag(
-        self, owner: str, repo: str, version: packaging.version.Version
-    ) -> Tag | None:
+    def _request_tag(self, owner: str, repo: str, version: packaging.version.Version) -> Tag | None:
         latest = None
         url = f"https://gitlab.com/api/v4/projects/{owner}%2F{repo}/repository/tags?per_page=100"
         while url:
@@ -247,12 +231,8 @@ class Resolve:
             for _tag in typing.cast(list[Tag], response.json()):
                 try:
                     _version = packaging.version.Version(_tag["name"])
-                    _timestamp = datetime.datetime.fromisoformat(
-                        _tag["commit"]["created_at"]
-                    )
-                    if (
-                        _version.is_prerelease and not version.is_prerelease
-                    ) or datetime.datetime.now(
+                    _timestamp = datetime.datetime.fromisoformat(_tag["commit"]["created_at"])
+                    if (_version.is_prerelease and not version.is_prerelease) or datetime.datetime.now(
                         _timestamp.tzinfo
                     ) - _timestamp < datetime.timedelta(days=Models.Config.COOLDOWN):
                         continue
