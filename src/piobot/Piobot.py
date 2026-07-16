@@ -23,6 +23,10 @@ class Piobot:
     _token: str
 
     def __init__(self) -> None:
+        """Initialize the updater with repository access and dependency entries parsed from the configuration file.
+        
+        The setup returns early when the latest commit is more than 90 days old. Otherwise, it configures Git and GitHub access and loads supported dependencies from the configured file.
+        """
         self.dependencies = list()
         self.ref = os.getenv("GITHUB_REF_NAME") or ""
         self.repository = os.getenv("GITHUB_REPOSITORY") or ""
@@ -150,6 +154,11 @@ class Piobot:
                 break
 
     def platformio(self) -> None:
+        """
+        Resolve dependencies using PlatformIO Registry providers.
+        
+        Unresolved dependencies remain available for subsequent resolver methods, while resolution errors are reported as warnings.
+        """
         resolve = PlatformIO.Resolve()
         for description, handler in {
             "package": resolve.package,
@@ -165,6 +174,13 @@ class Piobot:
                 break
 
     def _handle(self, dependency: Models.Dependency, result: Models.Result | str | None) -> None:
+        """
+        Process a dependency resolution result and remove it once handled.
+        
+        Parameters:
+        	dependency (Models.Dependency): The dependency associated with the result.
+        	result (Models.Result | str | None): The resolved update, diagnostic message, or no result.
+        """
         if isinstance(result, str):
             print(f"::debug::{result}")
         elif isinstance(result, Models.Result):
@@ -175,6 +191,13 @@ class Piobot:
         self.dependencies.remove(dependency)
 
     def _bump(self, dependency: Models.Dependency, result: Models.Result) -> None:
+        """
+        Create and publish a dependency update branch and pull request.
+        
+        Parameters:
+            dependency (Models.Dependency): Dependency entry whose configured value is updated.
+            result (Models.Result): Resolved update details, including package, versions, and pull request content.
+        """
         head = f"dependabot/platformio/{result.package}-{result.version_to}"
         if head in self._git.heads:
             return None
