@@ -24,7 +24,7 @@ class Piobot:
 
     def __init__(self) -> None:
         """Initialize the updater with repository access and dependency entries parsed from the configuration file.
-        
+
         The setup returns early when the latest commit is more than 90 days old. Otherwise, it configures Git and GitHub access and loads supported dependencies from the configured file.
         """
         self.dependencies = list()
@@ -156,7 +156,7 @@ class Piobot:
     def platformio(self) -> None:
         """
         Resolve dependencies using PlatformIO Registry providers.
-        
+
         Unresolved dependencies remain available for subsequent resolver methods, while resolution errors are reported as warnings.
         """
         resolve = PlatformIO.Resolve()
@@ -176,10 +176,10 @@ class Piobot:
     def _handle(self, dependency: Models.Dependency, result: Models.Result | str | None) -> None:
         """
         Process a dependency resolution result and remove it once handled.
-        
+
         Parameters:
-        	dependency (Models.Dependency): The dependency associated with the result.
-        	result (Models.Result | str | None): The resolved update, diagnostic message, or no result.
+                dependency (Models.Dependency): The dependency associated with the result.
+                result (Models.Result | str | None): The resolved update, diagnostic message, or no result.
         """
         if isinstance(result, str):
             print(f"::debug::{result}")
@@ -193,7 +193,7 @@ class Piobot:
     def _bump(self, dependency: Models.Dependency, result: Models.Result) -> None:
         """
         Create and publish a dependency update branch and pull request.
-        
+
         Parameters:
             dependency (Models.Dependency): Dependency entry whose configured value is updated.
             result (Models.Result): Resolved update details, including package, versions, and pull request content.

@@ -86,11 +86,11 @@ class Resolve:
     def name_commit(self, dependency: Models.Dependency) -> Models.Result | str | None:
         """
         Resolve a Bitbucket dependency pinned to a commit and identify an eligible tag.
-        
+
         Parameters:
             dependency (Models.Dependency): Dependency specification containing the
                 Bitbucket URL and version tag.
-        
+
         Returns:
             Models.Result: Upgrade details when a newer tag is available.
             str: Updated dependency assignment when the selected tag is not newer.
@@ -126,10 +126,10 @@ class Resolve:
     def name_tag(self, dependency: Models.Dependency) -> Models.Result | str | None:
         """
         Resolve a named Bitbucket repository tag dependency to a newer tag when available.
-        
+
         Parameters:
             dependency (Models.Dependency): Dependency specification containing the repository name, current tag, package prefix, and archive variant.
-        
+
         Returns:
             Models.Result | str | None: A result describing a newer tag, the formatted dependency assignment when the tag is not newer, or `None` when the dependency does not match or no eligible tag is found.
         """
@@ -162,10 +162,10 @@ class Resolve:
     def uuid_commit(self, dependency: Models.Dependency) -> Models.Result | str | None:
         """
         Create a dependency update result from a UUID-based Bitbucket commit reference.
-        
+
         Parameters:
             dependency (Models.Dependency): Dependency containing the Bitbucket reference to resolve.
-        
+
         Returns:
             Models.Result: Update metadata when a newer tag is available.
             str: Rewritten dependency assignment when the resolved tag is not newer.
@@ -200,10 +200,10 @@ class Resolve:
     def uuid_tag(self, dependency: Models.Dependency) -> Models.Result | str | None:
         """
         Resolve a UUID-based Bitbucket tag dependency to an available update.
-        
+
         Parameters:
             dependency (Models.Dependency): Dependency specification containing the tag-based Bitbucket URL.
-        
+
         Returns:
             Models.Result: Update details when a newer tag is available.
             str: Rewritten dependency assignment when the resolved tag is not newer.
@@ -238,11 +238,11 @@ class Resolve:
     def _request_tag(self, name: str, version: packaging.version.Version) -> Value | None:
         """
         Select an eligible Bitbucket tag for a repository and version.
-        
+
         Parameters:
             name (str): The Bitbucket repository name.
             version (packaging.version.Version): The current dependency version.
-        
+
         Returns:
             Value | None: The first eligible tag newer than the current version, or the first eligible tag encountered when no newer tag exists; `None` if no eligible tags are found.
         """

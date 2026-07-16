@@ -69,11 +69,11 @@ class Resolve:
     def _parse(self, name: str, version: packaging.version.Version) -> Library | None:
         """
         Select a library record matching the requested name and version criteria.
-        
+
         Parameters:
             name (str): Library name to match.
             version (packaging.version.Version): Version used to select a candidate.
-        
+
         Returns:
             Library | None: The first matching library with a greater eligible version, or the first eligible matching library when no greater version exists; `None` if no matching library is found.
         """

@@ -69,12 +69,12 @@ class Resolve:
     def api(self, dependency: Models.Dependency) -> Models.Result | str | None:
         """
         Resolve a PlatformIO API download URL to an available package update.
-        
+
         Parameters:
-        	dependency (Models.Dependency): Dependency containing the API download URL to resolve.
-        
+                dependency (Models.Dependency): Dependency containing the API download URL to resolve.
+
         Returns:
-        	Models.Result | str | None: An update result or dependency assignment when a matching file is found; otherwise, None.
+                Models.Result | str | None: An update result or dependency assignment when a matching file is found; otherwise, None.
         """
         match = typing.cast(Download | None, self._api.fullmatch(dependency.value))
         if not match:
@@ -109,10 +109,10 @@ class Resolve:
     def download(self, dependency: Models.Dependency) -> Models.Result | str | None:
         """
         Resolve a PlatformIO download URL dependency to an available package version.
-        
+
         Parameters:
             dependency (Models.Dependency): Dependency containing the download URL and update option.
-        
+
         Returns:
             Models.Result | str | None: An update result or assignment when a matching file is found; otherwise, None.
         """
@@ -175,11 +175,11 @@ class Resolve:
     def _parse(self, data: Data, version: packaging.version.Version) -> Version | None:
         """
         Select a suitable package version from the available release data.
-        
+
         Parameters:
             data (Data): Package metadata containing available versions and release timestamps.
             version (packaging.version.Version): Currently requested version.
-        
+
         Returns:
             Version | None: The first eligible version greater than the requested version, or the first eligible version when no greater version is available; `None` if no valid version qualifies.
         """
@@ -205,12 +205,12 @@ class Resolve:
     def _request_package(self, option: str, owner: str, name: str) -> Data:
         """
         Fetch package metadata from the PlatformIO registry.
-        
+
         Parameters:
             option (str): Dependency option used to determine the registry category.
             owner (str): Package owner name.
             name (str): Package name.
-        
+
         Returns:
             Data: Package metadata.
         """
@@ -224,13 +224,13 @@ class Resolve:
     def _request_package_version(self, option: str, owner: str, name: str, version: str) -> Data:
         """
         Fetches package data for a specific version from the PlatformIO registry.
-        
+
         Parameters:
             option (str): Dependency option used to determine the registry category.
             owner (str): Package owner.
             name (str): Package name.
             version (str): Requested package version.
-        
+
         Returns:
             Data: Package metadata for the requested version.
         """

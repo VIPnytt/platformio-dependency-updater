@@ -72,12 +72,12 @@ class Resolve:
     def release_tag(self, dependency: Models.Dependency) -> Models.Result | str | None:
         """
         Resolve a tag-based GitLab dependency to the latest eligible release asset.
-        
+
         Parameters:
-        	dependency (Models.Dependency): Dependency expression containing a GitLab tag archive URL.
-        
+                dependency (Models.Dependency): Dependency expression containing a GitLab tag archive URL.
+
         Returns:
-        	Models.Result | str | None: An update result or assignment string when a matching release asset is found; otherwise, `None`.
+                Models.Result | str | None: An update result or assignment string when a matching release asset is found; otherwise, `None`.
         """
         match = typing.cast(MatchTag | None, self._tag.fullmatch(dependency.value))
         if not match:
@@ -115,12 +115,12 @@ class Resolve:
     def release_tag_commit(self, dependency: Models.Dependency) -> Models.Result | str | None:
         """
         Resolve a commit-archive dependency to the next matching GitLab release.
-        
+
         Parameters:
-        	dependency (Models.Dependency): Dependency whose commit-archive value is resolved.
-        
+                dependency (Models.Dependency): Dependency whose commit-archive value is resolved.
+
         Returns:
-        	Models.Result | str | None: An update result or assignment string when a matching release asset is found; otherwise, None.
+                Models.Result | str | None: An update result or assignment string when a matching release asset is found; otherwise, None.
         """
         match = typing.cast(MatchCommit | None, self._commit.fullmatch(dependency.value))
         if not match:
@@ -156,14 +156,14 @@ class Resolve:
     def tag(self, dependency: Models.Dependency) -> Models.Result | str | None:
         """
         Resolve a tag-based GitLab dependency to the latest available tag archive.
-        
+
         Parameters:
-        	dependency (Models.Dependency): Dependency expression containing a GitLab tag archive reference.
-        
+                dependency (Models.Dependency): Dependency expression containing a GitLab tag archive reference.
+
         Returns:
-        	Models.Result: Updated dependency metadata when a newer tag is available.
-        	str: Dependency assignment using the resolved tag when no newer tag is available.
-        	None: If the dependency does not match the expected format or no matching tag is found.
+                Models.Result: Updated dependency metadata when a newer tag is available.
+                str: Dependency assignment using the resolved tag when no newer tag is available.
+                None: If the dependency does not match the expected format or no matching tag is found.
         """
         match = typing.cast(MatchTag | None, self._tag.fullmatch(dependency.value))
         if not match:
@@ -194,10 +194,10 @@ class Resolve:
 
     def tag_commit(self, dependency: Models.Dependency) -> Models.Result | str | None:
         """Resolve a commit archive dependency to the latest eligible GitLab tag.
-        
+
         Parameters:
             dependency (Models.Dependency): Dependency expression containing a commit archive URL and version tag.
-        
+
         Returns:
             Models.Result: Updated dependency details when a newer tag is available.
             str: Assignment string when the resolved tag is not newer.
@@ -232,12 +232,12 @@ class Resolve:
 
     def _parse_link(self, url: str) -> tuple[str, str]:
         """Extract the owner and repository names from a GitLab URL.
-        
+
         Parameters:
-        	url (str): A GitLab URL containing the owner and repository path.
-        
+                url (str): A GitLab URL containing the owner and repository path.
+
         Returns:
-        	tuple[str, str]: The owner and repository names.
+                tuple[str, str]: The owner and repository names.
         """
         fragments = url.split("/", 5)
         return fragments[3], fragments[4]
@@ -245,12 +245,12 @@ class Resolve:
     def _request_release(self, owner: str, repo: str, version: packaging.version.Version) -> Release | None:
         """
         Finds the first eligible GitLab release newer than the specified version.
-        
+
         Parameters:
             owner (str): GitLab project owner or namespace.
             repo (str): GitLab repository name.
             version (packaging.version.Version): Current dependency version.
-        
+
         Returns:
             Release | None: A qualifying release, the latest eligible release when no newer release exists, or None when no eligible release is found.
         """
@@ -284,12 +284,12 @@ class Resolve:
     def _request_tag(self, owner: str, repo: str, version: packaging.version.Version) -> Tag | None:
         """
         Find the first eligible GitLab tag newer than the specified version.
-        
+
         Parameters:
             owner (str): GitLab project owner or namespace.
             repo (str): GitLab repository name.
             version (packaging.version.Version): Version used to evaluate candidate tags.
-        
+
         Returns:
             Tag | None: The first eligible newer tag, or the latest eligible tag when no newer tag exists.
         """
