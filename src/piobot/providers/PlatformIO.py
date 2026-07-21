@@ -152,10 +152,10 @@ class Resolve:
     def package(self, dependency: Models.Dependency) -> Models.Result | str | None:
         """
         Resolve a package reference and produce an update result or assignment.
-        
+
         Parameters:
             dependency (Models.Dependency): Dependency option and package reference to resolve.
-        
+
         Returns:
             Models.Result: Update information when a newer eligible version is available.
             str: Assignment using the resolved package version when no update is needed.
