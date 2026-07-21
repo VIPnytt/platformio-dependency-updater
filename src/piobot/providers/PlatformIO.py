@@ -65,7 +65,7 @@ class Resolve:
             r"^(?:(?P<package>(?:[^/\s]+/)?[^/\s]+)?\s*@\s*)?https://dl\.registry\.platformio\.org/download/(?P<owner>[^/\s]+)/(?:library|platform|tool)/(?P<name>[^/\s]+)/(?P<version>[^/\s]+)/(?P<file>[^/\s]+)(?:\s*;.*)?$"
         )
         self._package = re.compile(
-            r"^(?:(?P<owner>[^/\s]+)/)?(?P<name>[^/\s]+?)\s*@\s*(?P<version>[^\s]*)\S*(?:\s*;.*)?$"
+            r"^(?:(?P<owner>[^/\s]+)/)?(?P<name>[^/\s]+?)\s*@\s*(?P<version>[^\s]+)\S*(?:\s*;.*)?$"
         )
 
     def api(self, dependency: Models.Dependency) -> Models.Result | str | None:
