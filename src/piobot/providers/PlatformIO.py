@@ -42,7 +42,7 @@ class Download(typing.TypedDict):
 
 class Package(typing.TypedDict):
     name: str
-    owner: str
+    owner: str | None
     version: str
 
 
@@ -58,13 +58,16 @@ class Resolve:
     _package: re.Pattern[str]
 
     def __init__(self) -> None:
+        """Initialize URL and package-reference patterns for PlatformIO dependencies."""
         self._api = re.compile(
             r"^(?:(?P<package>(?:[^/\s]+/)?[^/\s]+)?\s*@\s*)?https://api\.registry\.platformio\.org/v3/download/(?P<owner>[^/\s]+)/(?:library|platform|tool)/(?P<name>[^/\s]+)/(?P<version>[^/\s]+)/(?P<file>[^/\s]+)(?:\s*;.*)?$"
         )
         self._download = re.compile(
             r"^(?:(?P<package>(?:[^/\s]+/)?[^/\s]+)?\s*@\s*)?https://dl\.registry\.platformio\.org/download/(?P<owner>[^/\s]+)/(?:library|platform|tool)/(?P<name>[^/\s]+)/(?P<version>[^/\s]+)/(?P<file>[^/\s]+)(?:\s*;.*)?$"
         )
-        self._package = re.compile(r"^(?P<owner>[^/\s]+)/(?P<name>[^/\s]+?)\s*@\s*(?P<version>[^\s]*)\S*(?:\s*;.*)?$")
+        self._package = re.compile(
+            r"^(?:(?P<owner>[^/\s]+)/)?(?P<name>[^/\s]+?)\s*@\s*(?P<version>[^\s]+)\S*(?:\s*;.*)?$"
+        )
 
     def api(self, dependency: Models.Dependency) -> Models.Result | str | None:
         """
@@ -147,11 +150,24 @@ class Resolve:
         return None
 
     def package(self, dependency: Models.Dependency) -> Models.Result | str | None:
+        """
+        Resolve a package reference and produce an update result or assignment.
+
+        Parameters:
+            dependency (Models.Dependency): Dependency option and package reference to resolve.
+
+        Returns:
+            Models.Result: Update information when a newer eligible version is available.
+            str: Assignment using the resolved package version when no update is needed.
+            None: If the dependency reference does not match or no eligible version is found.
+        """
         match = typing.cast(Package | None, self._package.fullmatch(dependency.value))
         if not match:
             return None
         version = packaging.version.Version(match["version"])
-        data = self._request_package(dependency.option, match["owner"], match["name"])
+        data = self._request_package(
+            dependency.option, "platformio" if match["owner"] is None else match["owner"], match["name"]
+        )
         _version = self._parse(data, version)
         if _version is None:
             return None
