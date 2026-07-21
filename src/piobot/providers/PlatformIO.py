@@ -58,6 +58,7 @@ class Resolve:
     _package: re.Pattern[str]
 
     def __init__(self) -> None:
+        """Initialize URL and package-reference patterns for PlatformIO dependencies."""
         self._api = re.compile(
             r"^(?:(?P<package>(?:[^/\s]+/)?[^/\s]+)?\s*@\s*)?https://api\.registry\.platformio\.org/v3/download/(?P<owner>[^/\s]+)/(?:library|platform|tool)/(?P<name>[^/\s]+)/(?P<version>[^/\s]+)/(?P<file>[^/\s]+)(?:\s*;.*)?$"
         )
@@ -149,6 +150,17 @@ class Resolve:
         return None
 
     def package(self, dependency: Models.Dependency) -> Models.Result | str | None:
+        """
+        Resolve a package reference and produce an update result or assignment.
+        
+        Parameters:
+            dependency (Models.Dependency): Dependency option and package reference to resolve.
+        
+        Returns:
+            Models.Result: Update information when a newer eligible version is available.
+            str: Assignment using the resolved package version when no update is needed.
+            None: If the dependency reference does not match or no eligible version is found.
+        """
         match = typing.cast(Package | None, self._package.fullmatch(dependency.value))
         if not match:
             return None
