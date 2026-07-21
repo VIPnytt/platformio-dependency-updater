@@ -42,7 +42,7 @@ class Download(typing.TypedDict):
 
 class Package(typing.TypedDict):
     name: str
-    owner: str
+    owner: str | None
     version: str
 
 
@@ -64,7 +64,9 @@ class Resolve:
         self._download = re.compile(
             r"^(?:(?P<package>(?:[^/\s]+/)?[^/\s]+)?\s*@\s*)?https://dl\.registry\.platformio\.org/download/(?P<owner>[^/\s]+)/(?:library|platform|tool)/(?P<name>[^/\s]+)/(?P<version>[^/\s]+)/(?P<file>[^/\s]+)(?:\s*;.*)?$"
         )
-        self._package = re.compile(r"^(?P<owner>[^/\s]+)/(?P<name>[^/\s]+?)\s*@\s*(?P<version>[^\s]*)\S*(?:\s*;.*)?$")
+        self._package = re.compile(
+            r"^(?:(?P<owner>[^/\s]+)/)?(?P<name>[^/\s]+?)\s*@\s*(?P<version>[^\s]*)\S*(?:\s*;.*)?$"
+        )
 
     def api(self, dependency: Models.Dependency) -> Models.Result | str | None:
         """
@@ -151,7 +153,9 @@ class Resolve:
         if not match:
             return None
         version = packaging.version.Version(match["version"])
-        data = self._request_package(dependency.option, match["owner"], match["name"])
+        data = self._request_package(
+            dependency.option, "platformio" if match["owner"] is None else match["owner"], match["name"]
+        )
         _version = self._parse(data, version)
         if _version is None:
             return None
