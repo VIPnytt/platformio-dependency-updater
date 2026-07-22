@@ -3,6 +3,7 @@ import fileinput
 import git
 import github
 import os
+import re
 import sys
 import typing
 
@@ -42,6 +43,7 @@ class Piobot:
         ).release()
         self._git.remote().set_url(f"https://x-access-token:{self._token}@github.com/{self.repository}.git")
         self._github = github.Github(auth=github.Auth.Token(self._token))
+        _variable = re.compile(r"^\${\S+\.(?:lib_deps|platform|platform_packages)}(?:\s*;.*)?$")
         i = 0
         option: Models.Option | None = None
         with open(Models.Config.FILE, encoding="utf-8") as file:
@@ -56,6 +58,7 @@ class Piobot:
                         and len(_line) > 0
                         and not _line.startswith(";")
                         and not _line.startswith("#")
+                        and _variable.fullmatch(_line) is None
                     ):
                         self.dependencies.append(Models.Dependency(line=i, option=option, value=_line))
                     continue
@@ -63,7 +66,7 @@ class Piobot:
                 _key = key.rstrip()
                 if _key in Models.Option:
                     _value = value.strip()
-                    if len(_value) > 0:
+                    if len(_value) > 0 and _variable.fullmatch(_value) is None:
                         self.dependencies.append(
                             Models.Dependency(
                                 line=i,
