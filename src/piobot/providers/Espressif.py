@@ -7,6 +7,19 @@ import typing
 from .. import Models
 
 
+class Api(typing.TypedDict):
+    id: str
+    package: str | None
+
+
+class Component(typing.TypedDict):
+    file: str
+    name: str
+    namespace: str
+    package: str | None
+    version: str
+
+
 class Version(typing.TypedDict):
     created_at: str
     id: str
@@ -27,31 +40,19 @@ class Disposition(typing.TypedDict):
     version: str
 
 
-class Api(typing.TypedDict):
-    id: str
-    package: str | None
-
-
-class Component(typing.TypedDict):
-    file: str
-    name: str
-    namespace: str
-    package: str | None
-    version: str
-
-
 class Resolve:
     _api: re.Pattern[str]
     _component: re.Pattern[str]
+    _disposition: re.Pattern[str]
 
     def __init__(self) -> None:
-        self._disposition = re.compile(r"^\S+;\s?filename=(?P<namespace>\S+)__(?P<name>\S+)-v(?P<version>\S+)\.\S+$")
         self._api = re.compile(
             r"^(?:(?P<package>(?:[^/\s]+/)?[^/\s]+)?\s*@\s*)?https://components\.espressif\.com/api/downloads/\?object_type=component&object_id=(?P<id>[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})(?:\s*;.*)?$"
         )
         self._component = re.compile(
             r"^(?:(?P<package>(?:[^/\s]+/)?[^/\s]+)?\s*@\s*)?https://components-file\.espressif\.com/components/(?P<namespace>[^/\s]+)/(?P<name>[^/\s]+)/(?P<version>[^/\s]+)/(?P<file>[^/\s]+)(?:\s*;.*)?$"
         )
+        self._disposition = re.compile(r"^\S+;\s?filename=(?P<namespace>\S+)__(?P<name>\S+)-v(?P<version>\S+)\.\S+$")
 
     def component(self, dependency: Models.Dependency) -> Models.Result | str | None:
         match = typing.cast(Component | None, self._component.fullmatch(dependency.value))
@@ -85,6 +86,8 @@ class Resolve:
         if not match:
             return None
         disposition = self._request_component_id(match["id"])
+        if disposition is None:
+            return None
         version = packaging.version.Version(disposition["version"])
         data = self._request_component(disposition["namespace"], disposition["name"])
         _version = self._parse(data, version)
@@ -140,11 +143,11 @@ class Resolve:
         response.raise_for_status()
         return typing.cast(Data, response.json())
 
-    def _request_component_id(self, id: str) -> Disposition:
+    def _request_component_id(self, id: str) -> Disposition | None:
         response = requests.head(
             url=f"https://components.espressif.com/api/downloads/?object_type=component&object_id={id}",
             headers={"User-Agent": Models.Config.USER_AGENT},
             timeout=Models.Config.TIMEOUT,
         )
         response.raise_for_status()
-        return typing.cast(Disposition, response.headers["Content-Disposition"])
+        return typing.cast(Disposition | None, self._disposition.fullmatch(response.headers["Content-Disposition"]))
