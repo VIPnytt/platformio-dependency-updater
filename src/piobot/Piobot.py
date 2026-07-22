@@ -9,6 +9,7 @@ import typing
 from . import Models
 from .providers import Arduino
 from .providers import Bitbucket
+from .providers import Espressif
 from .providers import GitHub
 from .providers import GitLab
 from .providers import PlatformIO
@@ -79,6 +80,7 @@ class Piobot:
     def check(self) -> None:
         for provider in [
             self.platformio,
+            self.espressif,
             self.github,
             self.gitlab,
             self.bitbucket,
@@ -109,6 +111,20 @@ class Piobot:
                     self._handle(dependency, handler(dependency))
                 except Exception as e:
                     print(f"::warning Bitbucket {description}::{e}")
+            if len(self.dependencies) == 0:
+                break
+
+    def espressif(self) -> None:
+        resolve = Espressif.Resolve()
+        for description, handler in {
+            "file": resolve.component,
+            "download": resolve.component_id,
+        }.items():
+            for dependency in self.dependencies.copy():
+                try:
+                    self._handle(dependency, handler(dependency))
+                except Exception as e:
+                    print(f"::warning Espressif Registry {description}::{e}")
             if len(self.dependencies) == 0:
                 break
 
