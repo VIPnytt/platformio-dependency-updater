@@ -78,6 +78,7 @@ class Piobot:
                 option = None
 
     def check(self) -> None:
+        """Resolve dependencies using the configured provider integrations."""
         for provider in [
             self.platformio,
             self.espressif,
@@ -99,6 +100,10 @@ class Piobot:
                 print(f"::warning Arduino::{e}")
 
     def bitbucket(self) -> None:
+        """
+        Resolves unresolved dependencies using Bitbucket repository references.
+        
+        """
         resolve = Bitbucket.Resolve()
         for description, handler in {
             "uuid commit": resolve.uuid_commit,
@@ -115,6 +120,7 @@ class Piobot:
                 break
 
     def espressif(self) -> None:
+        """Resolve dependencies using the Espressif component registry."""
         resolve = Espressif.Resolve()
         for description, handler in {
             "file": resolve.component,
@@ -129,6 +135,11 @@ class Piobot:
                 break
 
     def github(self) -> None:
+        """
+        Resolve GitHub dependencies and process any available updates.
+        
+        Unresolved dependencies remain available for subsequent resolution methods. Exceptions from individual resolution attempts are reported as warnings.
+        """
         resolve = GitHub.Resolve()
         for description, handler in {
             "release tag commit archive": resolve.release_tag_commit_archive,
