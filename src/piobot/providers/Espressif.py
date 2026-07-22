@@ -46,6 +46,7 @@ class Resolve:
     _disposition: re.Pattern[str]
 
     def __init__(self) -> None:
+        """Initialize regular expressions for parsing Espressif component URLs and download metadata."""
         self._api = re.compile(
             r"^(?:(?P<package>(?:[^/\s]+/)?[^/\s]+)?\s*@\s*)?https://components\.espressif\.com/api/downloads/\?object_type=component&object_id=(?P<id>[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})(?:\s*;.*)?$"
         )
@@ -55,6 +56,17 @@ class Resolve:
         self._disposition = re.compile(r"^\S+;\s?filename=(?P<namespace>\S+)__(?P<name>\S+)-v(?P<version>\S+)\.\S+$")
 
     def component(self, dependency: Models.Dependency) -> Models.Result | str | None:
+        """
+        Resolve an Espressif component dependency and identify an available version update.
+        
+        Parameters:
+            dependency (Models.Dependency): Dependency declaration containing the component URL and assignment option.
+        
+        Returns:
+            Models.Result: Update details when a newer compatible version is available.
+            str: The dependency assignment with the selected version when no update is needed.
+            None: If the dependency value is not a recognized component URL or no eligible version is found.
+        """
         match = typing.cast(Component | None, self._component.fullmatch(dependency.value))
         if not match:
             return None
@@ -82,6 +94,17 @@ class Resolve:
         return f"{dependency.option} = {value}"
 
     def component_id(self, dependency: Models.Dependency) -> Models.Result | str | None:
+        """
+        Resolve an Espressif component API download dependency and identify an eligible newer version.
+        
+        Parameters:
+            dependency (Models.Dependency): Dependency containing the component download URL to resolve.
+        
+        Returns:
+            Models.Result | str | None: A bump result for a newer version, an updated dependency
+            assignment when no bump is required, or `None` when the dependency format or component
+            metadata cannot be resolved.
+        """
         match = typing.cast(Api | None, self._api.fullmatch(dependency.value))
         if not match:
             return None
@@ -110,6 +133,16 @@ class Resolve:
         return f"{dependency.option} = {value}"
 
     def _parse(self, data: Data, version: packaging.version.Version) -> Version | None:
+        """
+        Selects the first eligible version newer than the target, or the first eligible version when no newer version is available.
+        
+        Parameters:
+            data (Data): Component metadata containing candidate versions.
+            version (packaging.version.Version): Current component version used for comparison.
+        
+        Returns:
+            Version | None: The first eligible newer version, the first eligible existing version, or `None` if no valid version is available.
+        """
         latest = None
         for _candidate in typing.cast(list[Version], data["versions"]):
             try:
@@ -132,6 +165,15 @@ class Resolve:
         return latest
 
     def _request_component(self, namespace: str, name: str) -> Data:
+        """Fetch component metadata from the Espressif Components API.
+        
+        Parameters:
+            namespace (str): Component namespace.
+            name (str): Component name.
+        
+        Returns:
+            Data: Parsed component metadata.
+        """
         response = requests.get(
             url=f"https://components.espressif.com/api/components/{namespace}/{name}",
             headers={
@@ -144,6 +186,15 @@ class Resolve:
         return typing.cast(Data, response.json())
 
     def _request_component_id(self, id: str) -> Disposition | None:
+        """
+        Retrieve component metadata from a download endpoint.
+        
+        Parameters:
+            id (str): Component download identifier.
+        
+        Returns:
+            Disposition | None: Parsed content-disposition metadata, or `None` when the header does not match the expected format.
+        """
         response = requests.head(
             url=f"https://components.espressif.com/api/downloads/?object_type=component&object_id={id}",
             headers={"User-Agent": Models.Config.USER_AGENT},
