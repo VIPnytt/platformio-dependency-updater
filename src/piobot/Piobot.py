@@ -102,7 +102,7 @@ class Piobot:
     def bitbucket(self) -> None:
         """
         Resolves unresolved dependencies using Bitbucket repository references.
-        
+
         """
         resolve = Bitbucket.Resolve()
         for description, handler in {
@@ -137,7 +137,7 @@ class Piobot:
     def github(self) -> None:
         """
         Resolve GitHub dependencies and process any available updates.
-        
+
         Unresolved dependencies remain available for subsequent resolution methods. Exceptions from individual resolution attempts are reported as warnings.
         """
         resolve = GitHub.Resolve()

@@ -58,10 +58,10 @@ class Resolve:
     def component(self, dependency: Models.Dependency) -> Models.Result | str | None:
         """
         Resolve an Espressif component dependency and identify an available version update.
-        
+
         Parameters:
             dependency (Models.Dependency): Dependency declaration containing the component URL and assignment option.
-        
+
         Returns:
             Models.Result: Update details when a newer compatible version is available.
             str: The dependency assignment with the selected version when no update is needed.
@@ -96,10 +96,10 @@ class Resolve:
     def component_id(self, dependency: Models.Dependency) -> Models.Result | str | None:
         """
         Resolve an Espressif component API download dependency and identify an eligible newer version.
-        
+
         Parameters:
             dependency (Models.Dependency): Dependency containing the component download URL to resolve.
-        
+
         Returns:
             Models.Result | str | None: A bump result for a newer version, an updated dependency
             assignment when no bump is required, or `None` when the dependency format or component
@@ -135,11 +135,11 @@ class Resolve:
     def _parse(self, data: Data, version: packaging.version.Version) -> Version | None:
         """
         Selects the first eligible version newer than the target, or the first eligible version when no newer version is available.
-        
+
         Parameters:
             data (Data): Component metadata containing candidate versions.
             version (packaging.version.Version): Current component version used for comparison.
-        
+
         Returns:
             Version | None: The first eligible newer version, the first eligible existing version, or `None` if no valid version is available.
         """
@@ -166,11 +166,11 @@ class Resolve:
 
     def _request_component(self, namespace: str, name: str) -> Data:
         """Fetch component metadata from the Espressif Components API.
-        
+
         Parameters:
             namespace (str): Component namespace.
             name (str): Component name.
-        
+
         Returns:
             Data: Parsed component metadata.
         """
@@ -188,10 +188,10 @@ class Resolve:
     def _request_component_id(self, id: str) -> Disposition | None:
         """
         Retrieve component metadata from a download endpoint.
-        
+
         Parameters:
             id (str): Component download identifier.
-        
+
         Returns:
             Disposition | None: Parsed content-disposition metadata, or `None` when the header does not match the expected format.
         """
