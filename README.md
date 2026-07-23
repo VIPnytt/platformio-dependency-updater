@@ -10,6 +10,20 @@ A GitHub Action that checks `platformio.ini` for dependency updates and creates 
 * Support for custom platform package versions
 * Pauses updates for inactive repositories after 3 months
 
+## Options
+
+| Option                     | Description                                                                      | Default value             |
+| -------------------------- | -------------------------------------------------------------------------------- | ------------------------- |
+| `cooldown`                 | Delay dependency updates for a number of days.                                   | `3` days                  |
+| `labels`                   | Comma-separated list of labels to apply to pull requests.                        | `dependencies,platformio` |
+| `open-pull-requests-limit` | Limits the maximum number of pull requests for version updates open at any time. | `5` PRs                   |
+| `project-dir`              | Path to project directory containing `platformio.ini`.                           | Repository root `.`       |
+
+## Limitations
+
+* Dependencies must be pinned to a specific version
+* Version ranges are not supported
+
 ## Usage
 
 Create a workflow file such as:
@@ -38,20 +52,6 @@ jobs:
       - name: Check for dependency updates
         uses: VIPnytt/platformio-dependency-updater@v1.0.0-b2
 ```
-
-## Options
-
-| Option                     | Description                                                                      | Default value             |
-| -------------------------- | -------------------------------------------------------------------------------- | ------------------------- |
-| `cooldown`                 | Delay dependency updates for a number of days.                                   | `3` days                  |
-| `labels`                   | Comma-separated list of labels to apply to pull requests.                        | `dependencies,platformio` |
-| `open-pull-requests-limit` | Limits the maximum number of pull requests for version updates open at any time. | `5` PRs                   |
-| `project-dir`              | Path to project directory containing `platformio.ini`.                           | Repository root `.`       |
-
-## Limitations
-
-* Dependencies must be pinned to a specific version
-* Version ranges are not supported
 
 ## How updates work
 
