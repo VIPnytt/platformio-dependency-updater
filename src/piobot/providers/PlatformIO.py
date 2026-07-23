@@ -59,7 +59,12 @@ class Resolve:
     _package: re.Pattern[str]
 
     def __init__(self, cooldown: datetime.timedelta) -> None:
-        """Initialize URL and package-reference patterns for PlatformIO dependencies."""
+        """
+        Initialize dependency resolution with the release cooldown and matching patterns.
+        
+        Parameters:
+        	cooldown (datetime.timedelta): Minimum age required for a release to be eligible.
+        """
         self.cooldown = cooldown
         self._api = re.compile(
             r"^(?:(?P<package>(?:[^/\s]+/)?[^/\s]+)?\s*@\s*)?https://api\.registry\.platformio\.org/v3/download/(?P<owner>[^/\s]+)/(?:library|platform|tool)/(?P<name>[^/\s]+)/(?P<version>[^/\s]+)/(?P<file>[^/\s]+)(?:\s*;.*)?$"
