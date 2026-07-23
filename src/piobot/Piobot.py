@@ -29,9 +29,10 @@ class Piobot:
     _token: str
 
     def __init__(self) -> None:
-        """Initialize the updater with repository access and dependency entries parsed from the configuration file.
-
-        The setup returns early when the latest commit is more than 90 days old. Otherwise, it configures Git and GitHub access and loads supported dependencies from the configured file.
+        """
+        Initialize repository access and parse supported dependency entries from the configured PlatformIO file.
+        
+        Initialization stops after loading configuration if the latest commit is more than 90 days old. Otherwise, Git and GitHub access are configured and dependencies are loaded from the file.
         """
         self.cooldown = datetime.timedelta(days=int(os.getenv(Models.Inputs.COOLDOWN, Models.Defaults.COOLDOWN)))
         self.dependencies = list()
@@ -179,6 +180,7 @@ class Piobot:
                 break
 
     def gitlab(self) -> None:
+        """Resolve dependencies using GitLab release and tag information."""
         resolve = GitLab.Resolve(self.cooldown)
         for description, handler in {
             "release tag commit": resolve.release_tag_commit,
@@ -234,7 +236,7 @@ class Piobot:
     def _bump(self, dependency: Models.Dependency, result: Models.Result) -> None:
         """
         Create and publish a dependency update branch and pull request.
-
+        
         Parameters:
             dependency (Models.Dependency): Dependency entry whose configured value is updated.
             result (Models.Result): Resolved update details, including package, versions, and pull request content.
@@ -287,6 +289,7 @@ class Piobot:
             _pr.delete_branch()
 
     def __del__(self) -> None:
+        """Report unresolved dependencies using GitHub Actions error annotations."""
         for dependency in self.dependencies:
             print(
                 f"::error file={self.ini},line={dependency.line},title=Unresolved::{dependency.option} = {dependency.value.split(';', 1)[0].rstrip()}"

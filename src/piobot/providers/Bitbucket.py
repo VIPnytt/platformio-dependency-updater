@@ -70,7 +70,12 @@ class Resolve:
     _uuid_tag: re.Pattern[str]
 
     def __init__(self, cooldown: datetime.timedelta) -> None:
-        """Initialize regular expressions for recognizing Bitbucket dependency URLs."""
+        """
+        Initialize a Bitbucket dependency URL resolver with the tag eligibility cooldown.
+        
+        Parameters:
+        	cooldown (datetime.timedelta): Maximum age threshold for newly created tags to be considered eligible.
+        """
         self.cooldown = cooldown
         self._name_commit = re.compile(
             r"^(?:(?P<package>(?:[^/\s]+/)?[^/\s]+)?\s*@\s*)?https://bitbucket\.org/(?P<name>[^/\s]+/[^/\s]+)/get/(?P<commit>[0-9a-f]{40})\.(?P<variant>tar\.gz|zip)\s*;\s*(?P<tag>\S+)$"

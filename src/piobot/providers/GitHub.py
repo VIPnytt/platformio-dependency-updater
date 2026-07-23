@@ -89,7 +89,12 @@ class Resolve:
     _git_tag: re.Pattern[str]
 
     def __init__(self, cooldown: datetime.timedelta) -> None:
-        """Initialize patterns for recognizing supported GitHub dependency URL formats."""
+        """
+        Initialize dependency URL matching patterns and store the release eligibility cooldown.
+        
+        Parameters:
+        	cooldown (datetime.timedelta): Minimum age required for a release or tag to be eligible.
+        """
         self.cooldown = cooldown
         self._archive_commit = re.compile(
             r"^(?:(?P<package>(?:[^/\s]+/)?[^/\s]+)?\s*@\s*)?https://github\.com/(?P<name>[^/\s]+/[^/\s]+)/archive/(?P<commit>[0-9a-f]{40})\.(?P<variant>tar\.gz|zip)\s*;\s*(?P<tag>\S+)$"

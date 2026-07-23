@@ -63,6 +63,11 @@ class Resolve:
     _commit: re.Pattern[str]
 
     def __init__(self, cooldown: datetime.timedelta) -> None:
+        """Initialize a resolver with the minimum age required for releases and tags.
+        
+        Parameters:
+        	cooldown (datetime.timedelta): Minimum age a release or tag must reach before it can be selected.
+        """
         self.cooldown = cooldown
         self._commit = re.compile(
             r"^(?:(?P<package>(?:[^/\s]+/)?[^/\s]+)?\s*@\s*)?https://gitlab\.com/(?P<owner>[^/\s]+)/(?P<repo>[^/\s]+)/-/archive/(?P<commit>[0-9a-f]{40})/[^/\s]+\.(?P<variant>tar|tar\.gz|zip)\s*;\s*(?P<tag>\S+)$"
