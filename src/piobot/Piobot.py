@@ -239,7 +239,7 @@ class Piobot:
             dependency (Models.Dependency): Dependency entry whose configured value is updated.
             result (Models.Result): Resolved update details, including package, versions, and pull request content.
         """
-        head = f"dependabot/platformio/{'' if self.ini.parent == '.' else f'{self.ini.parent}/'}{result.package}-{result.version_to}{'' if self.ini.parent == '.' else f' in /{self.ini.parent}'}"
+        head = f"dependabot/platformio/{'' if self.ini.parent == '.' else f'{re.sub(r"[^a-z0-9/]", "", str(self.ini.parent).lower())}/'}{result.package}-{result.version_to}"
         if head in self._git.heads:
             return None
         repo = self._github.get_repo(self.repository)
