@@ -248,16 +248,7 @@ class Piobot:
         if repo.get_pulls(base=self.ref, head=f"{repo.owner.login}:{head}", state="all").totalCount > 0:
             return None
         open = repo.get_pulls(base=self.ref, state="open")
-        _pr = next(
-            (
-                pr
-                for pr in open
-                if pr.head.ref.startswith(
-                    f"dependabot/platformio/{'' if self.ini.parent == '.' else f'{self.ini.parent}/'}{result.package}-"
-                )
-            ),
-            None,
-        )
+        _pr = next((pr for pr in open if pr.head.ref.startswith(head.removesuffix(result.version_to))), None)
         if _pr is None and sum(1 for pr in open if pr.head.ref.startswith("dependabot/platformio/")) >= int(
             os.getenv(Models.Inputs.OPEN_PULL_REQUESTS_LIMIT, Models.Defaults.OPEN_PULL_REQUESTS_LIMIT)
         ):
