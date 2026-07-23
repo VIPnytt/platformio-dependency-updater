@@ -33,14 +33,14 @@ class Piobot:
 
         The setup returns early when the latest commit is more than 90 days old. Otherwise, it configures Git and GitHub access and loads supported dependencies from the configured file.
         """
-        self.cooldown = datetime.timedelta(days=int(os.getenv(Models.Inputs.COOLDOWN, "0")))
+        self.cooldown = datetime.timedelta(days=int(os.getenv(Models.Inputs.COOLDOWN, Models.Defaults.COOLDOWN)))
         self.dependencies = list()
         self.ini = (
-            (pathlib.Path(os.getenv(Models.Inputs.PROJECT_DIR, ".")) / "platformio.ini")
+            (pathlib.Path(os.getenv(Models.Inputs.PROJECT_DIR, Models.Defaults.PROJECT_DIR)) / "platformio.ini")
             .resolve(True)
             .relative_to(pathlib.Path.cwd())
         )
-        self.labels = {label.strip() for label in os.getenv(Models.Inputs.LABELS, "").split(",")}
+        self.labels = {label.strip() for label in os.getenv(Models.Inputs.LABELS, Models.Defaults.LABELS).split(",")}
         self.ref = os.getenv("GITHUB_REF_NAME", "")
         self.repository = os.getenv("GITHUB_REPOSITORY", "")
         self._token = os.getenv("GITHUB_TOKEN", "")
@@ -257,7 +257,7 @@ class Piobot:
             None,
         )
         if _pr is None and sum(1 for pr in open if pr.head.ref.startswith("dependabot/platformio/")) >= int(
-            os.getenv(Models.Inputs.OPEN_PULL_REQUESTS_LIMIT, "0")
+            os.getenv(Models.Inputs.OPEN_PULL_REQUESTS_LIMIT, Models.Defaults.OPEN_PULL_REQUESTS_LIMIT)
         ):
             return None
         self._git.head.set_reference(self._git.create_head(head, self.ref))

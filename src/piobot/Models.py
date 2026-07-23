@@ -23,6 +23,14 @@ class Dependency:
 
 
 @dataclasses.dataclass(frozen=True)
+class Defaults:
+    COOLDOWN: str = "3"
+    LABELS: str = "dependencies,platformio"
+    OPEN_PULL_REQUESTS_LIMIT: str = "5"
+    PROJECT_DIR: str = "."
+
+
+@dataclasses.dataclass(frozen=True)
 class Inputs:
     COOLDOWN: str = "COOLDOWN"
     LABELS: str = "LABELS"
