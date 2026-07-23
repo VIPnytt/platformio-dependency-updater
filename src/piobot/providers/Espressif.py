@@ -41,12 +41,14 @@ class Disposition(typing.TypedDict):
 
 
 class Resolve:
+    cooldown: datetime.timedelta
     _api: re.Pattern[str]
     _component: re.Pattern[str]
     _disposition: re.Pattern[str]
 
-    def __init__(self) -> None:
+    def __init__(self, cooldown: datetime.timedelta) -> None:
         """Initialize regular expressions for parsing Espressif component URLs and download metadata."""
+        self.cooldown = cooldown
         self._api = re.compile(
             r"^(?:(?P<package>(?:[^/\s]+/)?[^/\s]+)?\s*@\s*)?https://components\.espressif\.com/api/downloads/\?object_type=component&object_id=(?P<id>[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})(?:\s*;.*)?$"
         )
@@ -152,7 +154,7 @@ class Resolve:
                     or (_version.is_prerelease and not version.is_prerelease)
                     or datetime.datetime.now(datetime.timezone.utc)
                     - datetime.datetime.fromisoformat(_candidate["created_at"])
-                    < datetime.timedelta(days=Models.Config.COOLDOWN)
+                    < self.cooldown
                 ):
                     continue
                 elif _version > version:

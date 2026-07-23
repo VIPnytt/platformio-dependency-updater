@@ -2,20 +2,13 @@
 
 A GitHub Action that checks `platformio.ini` for dependency updates and creates pull requests when newer versions become available.
 
-## Features
+## Highlights
 
 * Multiple dependency sources; *PlatformIO*, *Espressif*, *GitHub*, *GitLab*, *Bitbucket*, and *Arduino*
-* Supports pre-release versions and custom package versions
-* PRs include links to release notes and changelog when available
-* Applies the `dependencies` and `platformio` labels if they exist
-* Keeps PRs manageable with a maximum of 5 open dependency PRs
-* Built-in 3-day cooldown for new releases to avoid faulty versions
+* Release notes included in the PR description, when available
+* Channel-aware pre-release handling
+* Support for custom platform package versions
 * Pauses updates for inactive repositories after 3 months
-
-## Limitations
-
-* Dependencies must be pinned to a specific version
-* Version ranges are not supported
 
 ## Usage
 
@@ -40,11 +33,25 @@ jobs:
 
     steps:
       - name: Checkout the repository
-        uses: actions/checkout
+        uses: actions/checkout@v7
 
       - name: Check for dependency updates
-        uses: VIPnytt/platformio-dependency-updater
+        uses: VIPnytt/platformio-dependency-updater@v1.0.0-b2
 ```
+
+## Options
+
+| Option                     | Description                                                                      | Default value             |
+| -------------------------- | -------------------------------------------------------------------------------- | ------------------------- |
+| `cooldown`                 | Delay dependency updates for a number of days.                                   | `3` days                  |
+| `labels`                   | Comma-separated list of labels to apply to pull requests.                        | `dependencies,platformio` |
+| `open-pull-requests-limit` | Limits the maximum number of pull requests for version updates open at any time. | `5` PRs                   |
+| `project-dir`              | Path to project directory containing `platformio.ini`.                           | Repository root `.`       |
+
+## Limitations
+
+* Dependencies must be pinned to a specific version
+* Version ranges are not supported
 
 ## How updates work
 

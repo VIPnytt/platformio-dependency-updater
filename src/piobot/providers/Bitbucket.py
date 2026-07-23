@@ -63,13 +63,15 @@ class Data(typing.TypedDict):
 
 
 class Resolve:
+    cooldown: datetime.timedelta
     _name_commit: re.Pattern[str]
     _name_tag: re.Pattern[str]
     _uuid_commit: re.Pattern[str]
     _uuid_tag: re.Pattern[str]
 
-    def __init__(self) -> None:
+    def __init__(self, cooldown: datetime.timedelta) -> None:
         """Initialize regular expressions for recognizing Bitbucket dependency URLs."""
+        self.cooldown = cooldown
         self._name_commit = re.compile(
             r"^(?:(?P<package>(?:[^/\s]+/)?[^/\s]+)?\s*@\s*)?https://bitbucket\.org/(?P<name>[^/\s]+/[^/\s]+)/get/(?P<commit>[0-9a-f]{40})\.(?P<variant>tar\.gz|zip)\s*;\s*(?P<tag>\S+)$"
         )
@@ -256,7 +258,7 @@ class Resolve:
                     _timestamp = datetime.datetime.fromisoformat(_value["target"]["date"])
                     if (_version.is_prerelease and not version.is_prerelease) or datetime.datetime.now(
                         _timestamp.tzinfo
-                    ) - _timestamp < datetime.timedelta(days=Models.Config.COOLDOWN):
+                    ) - _timestamp < self.cooldown:
                         continue
                     elif _version > version:
                         return _value

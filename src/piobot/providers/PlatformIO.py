@@ -53,12 +53,14 @@ class Type(enum.StrEnum):
 
 
 class Resolve:
+    cooldown: datetime.timedelta
     _api: re.Pattern[str]
     _download: re.Pattern[str]
     _package: re.Pattern[str]
 
-    def __init__(self) -> None:
+    def __init__(self, cooldown: datetime.timedelta) -> None:
         """Initialize URL and package-reference patterns for PlatformIO dependencies."""
+        self.cooldown = cooldown
         self._api = re.compile(
             r"^(?:(?P<package>(?:[^/\s]+/)?[^/\s]+)?\s*@\s*)?https://api\.registry\.platformio\.org/v3/download/(?P<owner>[^/\s]+)/(?:library|platform|tool)/(?P<name>[^/\s]+)/(?P<version>[^/\s]+)/(?P<file>[^/\s]+)(?:\s*;.*)?$"
         )
@@ -199,15 +201,14 @@ class Resolve:
         Returns:
             Version | None: The first eligible version greater than the requested version, or the first eligible version when no greater version is available; `None` if no valid version qualifies.
         """
+
         latest = None
         for _candidate in typing.cast(list[Version], data["versions"]):
             try:
                 _version = packaging.version.Version(_candidate["name"])
                 if (_version.is_prerelease and not version.is_prerelease) or datetime.datetime.now(
                     datetime.timezone.utc
-                ) - datetime.datetime.fromisoformat(
-                    _candidate["released_at"].replace("Z", "+00:00")
-                ) < datetime.timedelta(days=Models.Config.COOLDOWN):
+                ) - datetime.datetime.fromisoformat(_candidate["released_at"].replace("Z", "+00:00")) < self.cooldown:
                     continue
                 elif _version > version:
                     return _candidate

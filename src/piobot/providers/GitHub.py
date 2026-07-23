@@ -79,6 +79,7 @@ class TagID(typing.TypedDict):
 
 
 class Resolve:
+    cooldown: datetime.timedelta
     _archive_commit: re.Pattern[str]
     _archive_tag: re.Pattern[str]
     _ball_commit: re.Pattern[str]
@@ -87,8 +88,9 @@ class Resolve:
     _git_commit: re.Pattern[str]
     _git_tag: re.Pattern[str]
 
-    def __init__(self) -> None:
+    def __init__(self, cooldown: datetime.timedelta) -> None:
         """Initialize patterns for recognizing supported GitHub dependency URL formats."""
+        self.cooldown = cooldown
         self._archive_commit = re.compile(
             r"^(?:(?P<package>(?:[^/\s]+/)?[^/\s]+)?\s*@\s*)?https://github\.com/(?P<name>[^/\s]+/[^/\s]+)/archive/(?P<commit>[0-9a-f]{40})\.(?P<variant>tar\.gz|zip)\s*;\s*(?P<tag>\S+)$"
         )
@@ -652,7 +654,7 @@ class Resolve:
                         or _published_at is None
                         or datetime.datetime.now(datetime.timezone.utc)
                         - datetime.datetime.fromisoformat(_published_at.replace("Z", "+00:00"))
-                        < datetime.timedelta(days=Models.Config.COOLDOWN)
+                        < self.cooldown
                     ):
                         continue
                     elif _version > version:
@@ -703,9 +705,13 @@ class Resolve:
                         continue
                     elif _version > version:
                         _commit = self._request_commit_id(name, _tag["commit"]["sha"])
-                        if datetime.datetime.now(datetime.timezone.utc) - datetime.datetime.fromisoformat(
-                            _commit["commit"]["committer"]["date"].replace("Z", "+00:00")
-                        ) < datetime.timedelta(days=Models.Config.COOLDOWN):
+                        if (
+                            datetime.datetime.now(datetime.timezone.utc)
+                            - datetime.datetime.fromisoformat(
+                                _commit["commit"]["committer"]["date"].replace("Z", "+00:00")
+                            )
+                            < self.cooldown
+                        ):
                             continue
                         return _tag
                     elif not latest:

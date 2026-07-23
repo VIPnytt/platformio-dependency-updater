@@ -58,10 +58,12 @@ class Tag(typing.TypedDict):
 
 
 class Resolve:
+    cooldown: datetime.timedelta
     _tag: re.Pattern[str]
     _commit: re.Pattern[str]
 
-    def __init__(self, token: str | None = None) -> None:
+    def __init__(self, cooldown: datetime.timedelta) -> None:
+        self.cooldown = cooldown
         self._commit = re.compile(
             r"^(?:(?P<package>(?:[^/\s]+/)?[^/\s]+)?\s*@\s*)?https://gitlab\.com/(?P<owner>[^/\s]+)/(?P<repo>[^/\s]+)/-/archive/(?P<commit>[0-9a-f]{40})/[^/\s]+\.(?P<variant>tar|tar\.gz|zip)\s*;\s*(?P<tag>\S+)$"
         )
@@ -268,7 +270,7 @@ class Resolve:
                     ) - max(
                         datetime.datetime.fromisoformat(_created_at.replace("Z", "+00:00")),
                         datetime.datetime.fromisoformat(_released_at.replace("Z", "+00:00")),
-                    ) < datetime.timedelta(days=Models.Config.COOLDOWN):
+                    ) < self.cooldown:
                         continue
                     elif _version > version:
                         return _release
@@ -303,7 +305,7 @@ class Resolve:
                     _timestamp = datetime.datetime.fromisoformat(_tag["commit"]["created_at"])
                     if (_version.is_prerelease and not version.is_prerelease) or datetime.datetime.now(
                         _timestamp.tzinfo
-                    ) - _timestamp < datetime.timedelta(days=Models.Config.COOLDOWN):
+                    ) - _timestamp < self.cooldown:
                         continue
                     elif _version > version:
                         return _tag
