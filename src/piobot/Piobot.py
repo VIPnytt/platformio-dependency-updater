@@ -236,10 +236,12 @@ class Piobot:
     def _bump(self, dependency: Models.Dependency, result: Models.Result) -> None:
         """
         Create and publish a dependency update branch and pull request.
-
+        
         Parameters:
-            dependency (Models.Dependency): Dependency entry whose configured value is updated.
-            result (Models.Result): Resolved update details, including package, versions, and pull request content.
+            dependency (Models.Dependency): Dependency entry to update.
+            result (Models.Result): Update details, including package, versions, replacement value, and pull request body.
+        
+        The update is skipped when an equivalent branch or pull request already exists, or when the open pull request limit is reached. An older matching pull request is closed and its branch deleted when superseded.
         """
         head = f"dependabot/platformio/{'' if self.ini.parent == '.' else f'{re.sub(r"[^a-z0-9/]", "", str(self.ini.parent).lower())}/'}{result.package}-{result.version_to}"
         if head in self._git.heads:

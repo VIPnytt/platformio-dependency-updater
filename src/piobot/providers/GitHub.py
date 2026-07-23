@@ -630,14 +630,14 @@ class Resolve:
 
     def _request_release(self, name: str, tag: str) -> Release | None:
         """
-        Find a suitable GitHub release for a repository and version tag.
-
+        Find an eligible GitHub release for a repository and version tag.
+        
         Parameters:
             name (str): GitHub repository name in `owner/repository` format.
-            tag (str): Current release tag used as the version baseline.
-
+            tag (str): Release tag used as the version baseline.
+        
         Returns:
-            Release | None: A newer eligible release, the latest eligible release, or `None` if no suitable release exists.
+            Release | None: The first eligible release newer than the baseline, an eligible fallback release, or `None` if no eligible release is found.
         """
         version = packaging.version.Version(tag)
         prerelease = version.is_prerelease
@@ -691,13 +691,13 @@ class Resolve:
     def _request_tag(self, name: str, version: packaging.version.Version) -> Tag | None:
         """
         Find an eligible GitHub tag for a requested version.
-
+        
         Parameters:
             name (str): GitHub repository name in `owner/repository` format.
-            version (packaging.version.Version): Current dependency version used for comparison.
-
+            version (packaging.version.Version): Version used to identify newer compatible tags.
+        
         Returns:
-            Tag | None: The first eligible newer tag, the latest acceptable fallback tag, or `None` when no tags are available.
+            Tag | None: The first eligible newer tag, the first acceptable fallback tag, or `None` if no eligible tag is found.
         """
         latest = None
         url = f"https://api.github.com/repos/{name}/tags?per_page=100"

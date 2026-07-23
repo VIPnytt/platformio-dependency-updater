@@ -48,10 +48,10 @@ class Resolve:
 
     def __init__(self, cooldown: datetime.timedelta) -> None:
         """
-        Initialize the resolver with a version cooldown and compile patterns for parsing Espressif component URLs and download metadata.
-
+        Initialize the resolver with a cooldown for candidate versions and prepare URL and metadata parsers.
+        
         Parameters:
-                cooldown (datetime.timedelta): Minimum age required for a candidate version to be eligible.
+        	cooldown (datetime.timedelta): Minimum age required for a candidate version to be eligible.
         """
         self.cooldown = cooldown
         self._api = re.compile(
