@@ -65,9 +65,9 @@ class Resolve:
     def __init__(self, cooldown: datetime.timedelta) -> None:
         """
         Initialize a resolver with the minimum age required for releases and tags.
-        
+
         Parameters:
-        	cooldown (datetime.timedelta): Minimum age a release or tag must reach before it can be selected.
+            cooldown (datetime.timedelta): Minimum age a release or tag must reach before it can be selected.
         """
         self.cooldown = cooldown
         self._commit = re.compile(
@@ -292,12 +292,12 @@ class Resolve:
     def _request_tag(self, owner: str, repo: str, version: packaging.version.Version) -> Tag | None:
         """
         Selects an eligible GitLab tag relative to the specified version.
-        
+
         Parameters:
             owner (str): GitLab project owner or namespace.
             repo (str): GitLab repository name.
             version (packaging.version.Version): Version used to evaluate candidate tags.
-        
+
         Returns:
             Tag | None: The first eligible tag newer than the specified version, the first eligible tag when no newer tag exists, or `None` when no eligible tag is found.
         """

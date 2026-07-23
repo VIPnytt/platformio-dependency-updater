@@ -631,11 +631,11 @@ class Resolve:
     def _request_release(self, name: str, tag: str) -> Release | None:
         """
         Find an eligible GitHub release for a repository and version tag.
-        
+
         Parameters:
             name (str): GitHub repository name in `owner/repository` format.
             tag (str): Release tag used as the version baseline.
-        
+
         Returns:
             Release | None: The first eligible release newer than the baseline, an eligible fallback release, or `None` if no eligible release is found.
         """
@@ -691,11 +691,11 @@ class Resolve:
     def _request_tag(self, name: str, version: packaging.version.Version) -> Tag | None:
         """
         Find an eligible GitHub tag for a requested version.
-        
+
         Parameters:
             name (str): GitHub repository name in `owner/repository` format.
             version (packaging.version.Version): Version used to identify newer compatible tags.
-        
+
         Returns:
             Tag | None: The first eligible newer tag, the first acceptable fallback tag, or `None` if no eligible tag is found.
         """
