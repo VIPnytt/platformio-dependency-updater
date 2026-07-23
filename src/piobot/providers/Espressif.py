@@ -49,9 +49,9 @@ class Resolve:
     def __init__(self, cooldown: datetime.timedelta) -> None:
         """
         Initialize the resolver with a version cooldown and compile patterns for parsing Espressif component URLs and download metadata.
-        
+
         Parameters:
-        	cooldown (datetime.timedelta): Minimum age required for a candidate version to be eligible.
+                cooldown (datetime.timedelta): Minimum age required for a candidate version to be eligible.
         """
         self.cooldown = cooldown
         self._api = re.compile(
@@ -142,11 +142,11 @@ class Resolve:
     def _parse(self, data: Data, version: packaging.version.Version) -> Version | None:
         """
         Select an eligible component version based on the target version and cooldown period.
-        
+
         Parameters:
             data (Data): Component metadata containing candidate versions.
             version (packaging.version.Version): Current component version used for comparison.
-        
+
         Returns:
             Version | None: The first eligible version newer than the target, or the first eligible version at or below the target when no newer version qualifies; `None` if no candidate qualifies.
         """

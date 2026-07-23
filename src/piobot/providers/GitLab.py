@@ -64,9 +64,9 @@ class Resolve:
 
     def __init__(self, cooldown: datetime.timedelta) -> None:
         """Initialize a resolver with the minimum age required for releases and tags.
-        
+
         Parameters:
-        	cooldown (datetime.timedelta): Minimum age a release or tag must reach before it can be selected.
+                cooldown (datetime.timedelta): Minimum age a release or tag must reach before it can be selected.
         """
         self.cooldown = cooldown
         self._commit = re.compile(

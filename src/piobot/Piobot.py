@@ -31,7 +31,7 @@ class Piobot:
     def __init__(self) -> None:
         """
         Initialize repository access and parse supported dependency entries from the configured PlatformIO file.
-        
+
         Initialization stops after loading configuration if the latest commit is more than 90 days old. Otherwise, Git and GitHub access are configured and dependencies are loaded from the file.
         """
         self.cooldown = datetime.timedelta(days=int(os.getenv(Models.Inputs.COOLDOWN, Models.Defaults.COOLDOWN)))
@@ -236,7 +236,7 @@ class Piobot:
     def _bump(self, dependency: Models.Dependency, result: Models.Result) -> None:
         """
         Create and publish a dependency update branch and pull request.
-        
+
         Parameters:
             dependency (Models.Dependency): Dependency entry whose configured value is updated.
             result (Models.Result): Resolved update details, including package, versions, and pull request content.

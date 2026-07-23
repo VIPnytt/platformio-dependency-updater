@@ -61,9 +61,9 @@ class Resolve:
     def __init__(self, cooldown: datetime.timedelta) -> None:
         """
         Initialize dependency resolution with the release cooldown and matching patterns.
-        
+
         Parameters:
-        	cooldown (datetime.timedelta): Minimum age required for a release to be eligible.
+                cooldown (datetime.timedelta): Minimum age required for a release to be eligible.
         """
         self.cooldown = cooldown
         self._api = re.compile(

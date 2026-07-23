@@ -91,9 +91,9 @@ class Resolve:
     def __init__(self, cooldown: datetime.timedelta) -> None:
         """
         Initialize dependency URL matching patterns and store the release eligibility cooldown.
-        
+
         Parameters:
-        	cooldown (datetime.timedelta): Minimum age required for a release or tag to be eligible.
+                cooldown (datetime.timedelta): Minimum age required for a release or tag to be eligible.
         """
         self.cooldown = cooldown
         self._archive_commit = re.compile(

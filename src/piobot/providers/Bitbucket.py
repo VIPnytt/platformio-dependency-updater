@@ -72,9 +72,9 @@ class Resolve:
     def __init__(self, cooldown: datetime.timedelta) -> None:
         """
         Initialize a Bitbucket dependency URL resolver with the tag eligibility cooldown.
-        
+
         Parameters:
-        	cooldown (datetime.timedelta): Maximum age threshold for newly created tags to be considered eligible.
+                cooldown (datetime.timedelta): Maximum age threshold for newly created tags to be considered eligible.
         """
         self.cooldown = cooldown
         self._name_commit = re.compile(
