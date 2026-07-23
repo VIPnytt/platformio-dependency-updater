@@ -10,6 +10,7 @@ import typing
 from . import Models
 from .providers import Arduino
 from .providers import Bitbucket
+from .providers import Espressif
 from .providers import GitHub
 from .providers import GitLab
 from .providers import PlatformIO
@@ -80,8 +81,10 @@ class Piobot:
                 option = None
 
     def check(self) -> None:
+        """Resolve dependencies using the configured provider integrations."""
         for provider in [
             self.platformio,
+            self.espressif,
             self.github,
             self.gitlab,
             self.bitbucket,
@@ -100,6 +103,10 @@ class Piobot:
                 print(f"::warning Arduino::{e}")
 
     def bitbucket(self) -> None:
+        """
+        Resolves unresolved dependencies using Bitbucket repository references.
+
+        """
         resolve = Bitbucket.Resolve()
         for description, handler in {
             "uuid commit": resolve.uuid_commit,
@@ -115,7 +122,27 @@ class Piobot:
             if len(self.dependencies) == 0:
                 break
 
+    def espressif(self) -> None:
+        """Resolve dependencies using the Espressif component registry."""
+        resolve = Espressif.Resolve()
+        for description, handler in {
+            "file": resolve.component,
+            "download": resolve.component_id,
+        }.items():
+            for dependency in self.dependencies.copy():
+                try:
+                    self._handle(dependency, handler(dependency))
+                except Exception as e:
+                    print(f"::warning Espressif Registry {description}::{e}")
+            if len(self.dependencies) == 0:
+                break
+
     def github(self) -> None:
+        """
+        Resolve GitHub dependencies and process any available updates.
+
+        Unresolved dependencies remain available for subsequent resolution methods. Exceptions from individual resolution attempts are reported as warnings.
+        """
         resolve = GitHub.Resolve()
         for description, handler in {
             "release tag commit archive": resolve.release_tag_commit_archive,

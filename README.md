@@ -4,8 +4,7 @@ A GitHub Action that checks `platformio.ini` for dependency updates and creates 
 
 ## Features
 
-* Supports `platform`, `platform_packages`, and `lib_deps` dependencies
-* Supports multiple dependency sources, including *PlatformIO Registry*, *GitHub*, *GitLab*, *Bitbucket*, and *Arduino* libraries
+* Multiple dependency sources; *PlatformIO*, *Espressif*, *GitHub*, *GitLab*, *Bitbucket*, and *Arduino*
 * Supports pre-release versions and custom package versions
 * PRs include links to release notes and changelog when available
 * Applies the `dependencies` and `platformio` labels if they exist
