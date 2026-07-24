@@ -10,15 +10,6 @@ A GitHub Action that checks `platformio.ini` for dependency updates and creates 
 * Support for custom platform package versions
 * Pauses updates for inactive repositories after 3 months
 
-## Options
-
-| Option                     | Description                                                                      | Default value             |
-| -------------------------- | -------------------------------------------------------------------------------- | ------------------------- |
-| `cooldown`                 | Delay dependency updates for a number of days.                                   | `3` days                  |
-| `labels`                   | Comma-separated list of labels to apply to pull requests.                        | `dependencies,platformio` |
-| `open-pull-requests-limit` | Limits the maximum number of pull requests for version updates open at any time. | `5` PRs                   |
-| `project-dir`              | Path to project directory containing `platformio.ini`.                           | Repository root `.`       |
-
 ## Limitations
 
 * Dependencies must be pinned to a specific version
@@ -53,19 +44,14 @@ jobs:
         uses: VIPnytt/platformio-dependency-updater@v1.0.0-b2
 ```
 
-## How updates work
+## Options
 
-The action performs the following steps:
-
-1. Reads dependency definitions from `platformio.ini`
-2. Resolves the dependency provider
-3. Queries available versions
-4. Compares the current version with available releases or tags
-5. Creates a dedicated update branch
-6. Updates the dependency reference
-7. Opens a pull request
-
-Existing dependency pull requests are automatically managed to avoid duplicates and keep updates current.
+| Option                     | Default value             | Description                                                            |
+| -------------------------- | ------------------------- | ---------------------------------------------------------------------- |
+| `cooldown`                 | `3` days                  | Delay dependency updates for a number of days.                         |
+| `labels`                   | `dependencies,platformio` | Comma-separated list of labels to apply to PRs.                        |
+| `open-pull-requests-limit` | `5` PRs                   | Limits the maximum number of PRs for version updates open at any time. |
+| `project-dir`              | Repository root `.`       | Path to project directory containing `platformio.ini`.                 |
 
 ## Troubleshooting
 
