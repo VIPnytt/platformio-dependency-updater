@@ -1,8 +1,26 @@
 name: PlatformIO Dependency Updater
 description: Multi-source dependency updater for PlatformIO projects
+
 branding:
   icon: box
   color: orange
+
+inputs:
+  cooldown:
+    description: "Delay dependency updates for a number of days"
+    default: "3"
+
+  labels:
+    description: "Comma-separated list of labels to apply to pull requests"
+    default: "dependencies,platformio"
+
+  open-pull-requests-limit:
+    description: "Limits the maximum number of pull requests for version updates open at any time"
+    default: "5"
+
+  project-dir:
+    description: "Path to project directory containing platformio.ini"
+    default: "."
 
 runs:
   using: composite
@@ -18,5 +36,9 @@ runs:
       shell: bash
       run: uv run --no-dev --project "$GITHUB_ACTION_PATH" -m piobot
       env:
+        COOLDOWN: ${{ inputs.cooldown }}
         GITHUB_ACTION_PATH: ${{ github.action_path }}
         GITHUB_TOKEN: ${{ github.token }}
+        LABELS: ${{ inputs.labels }}
+        OPEN_PULL_REQUESTS_LIMIT: ${{ inputs.open-pull-requests-limit }}
+        PROJECT_DIR: ${{ inputs.project-dir }}

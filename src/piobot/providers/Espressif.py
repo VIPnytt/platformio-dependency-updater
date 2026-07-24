@@ -41,12 +41,19 @@ class Disposition(typing.TypedDict):
 
 
 class Resolve:
+    cooldown: datetime.timedelta
     _api: re.Pattern[str]
     _component: re.Pattern[str]
     _disposition: re.Pattern[str]
 
-    def __init__(self) -> None:
-        """Initialize regular expressions for parsing Espressif component URLs and download metadata."""
+    def __init__(self, cooldown: datetime.timedelta) -> None:
+        """
+        Initialize the resolver with a cooldown for candidate versions and prepare URL and metadata parsers.
+
+        Parameters:
+            cooldown (datetime.timedelta): Minimum age required for a candidate version to be eligible.
+        """
+        self.cooldown = cooldown
         self._api = re.compile(
             r"^(?:(?P<package>(?:[^/\s]+/)?[^/\s]+)?\s*@\s*)?https://components\.espressif\.com/api/downloads/\?object_type=component&object_id=(?P<id>[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})(?:\s*;.*)?$"
         )
@@ -134,14 +141,14 @@ class Resolve:
 
     def _parse(self, data: Data, version: packaging.version.Version) -> Version | None:
         """
-        Selects the first eligible version newer than the target, or the first eligible version when no newer version is available.
+        Select an eligible component version based on the target version and cooldown period.
 
         Parameters:
             data (Data): Component metadata containing candidate versions.
             version (packaging.version.Version): Current component version used for comparison.
 
         Returns:
-            Version | None: The first eligible newer version, the first eligible existing version, or `None` if no valid version is available.
+            Version | None: The first eligible version newer than the target, or the first eligible version at or below the target when no newer version qualifies; `None` if no candidate qualifies.
         """
         latest = None
         for _candidate in typing.cast(list[Version], data["versions"]):
@@ -152,7 +159,7 @@ class Resolve:
                     or (_version.is_prerelease and not version.is_prerelease)
                     or datetime.datetime.now(datetime.timezone.utc)
                     - datetime.datetime.fromisoformat(_candidate["created_at"])
-                    < datetime.timedelta(days=Models.Config.COOLDOWN)
+                    < self.cooldown
                 ):
                     continue
                 elif _version > version:

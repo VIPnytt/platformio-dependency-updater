@@ -58,10 +58,18 @@ class Tag(typing.TypedDict):
 
 
 class Resolve:
+    cooldown: datetime.timedelta
     _tag: re.Pattern[str]
     _commit: re.Pattern[str]
 
-    def __init__(self, token: str | None = None) -> None:
+    def __init__(self, cooldown: datetime.timedelta) -> None:
+        """
+        Initialize a resolver with the minimum age required for releases and tags.
+
+        Parameters:
+            cooldown (datetime.timedelta): Minimum age a release or tag must reach before it can be selected.
+        """
+        self.cooldown = cooldown
         self._commit = re.compile(
             r"^(?:(?P<package>(?:[^/\s]+/)?[^/\s]+)?\s*@\s*)?https://gitlab\.com/(?P<owner>[^/\s]+)/(?P<repo>[^/\s]+)/-/archive/(?P<commit>[0-9a-f]{40})/[^/\s]+\.(?P<variant>tar|tar\.gz|zip)\s*;\s*(?P<tag>\S+)$"
         )
@@ -268,7 +276,7 @@ class Resolve:
                     ) - max(
                         datetime.datetime.fromisoformat(_created_at.replace("Z", "+00:00")),
                         datetime.datetime.fromisoformat(_released_at.replace("Z", "+00:00")),
-                    ) < datetime.timedelta(days=Models.Config.COOLDOWN):
+                    ) < self.cooldown:
                         continue
                     elif _version > version:
                         return _release
@@ -283,7 +291,7 @@ class Resolve:
 
     def _request_tag(self, owner: str, repo: str, version: packaging.version.Version) -> Tag | None:
         """
-        Find the first eligible GitLab tag newer than the specified version.
+        Selects an eligible GitLab tag relative to the specified version.
 
         Parameters:
             owner (str): GitLab project owner or namespace.
@@ -291,7 +299,7 @@ class Resolve:
             version (packaging.version.Version): Version used to evaluate candidate tags.
 
         Returns:
-            Tag | None: The first eligible newer tag, or the latest eligible tag when no newer tag exists.
+            Tag | None: The first eligible tag newer than the specified version, the first eligible tag when no newer tag exists, or `None` when no eligible tag is found.
         """
         latest = None
         url = f"https://gitlab.com/api/v4/projects/{owner}%2F{repo}/repository/tags?per_page=100"
@@ -303,7 +311,7 @@ class Resolve:
                     _timestamp = datetime.datetime.fromisoformat(_tag["commit"]["created_at"])
                     if (_version.is_prerelease and not version.is_prerelease) or datetime.datetime.now(
                         _timestamp.tzinfo
-                    ) - _timestamp < datetime.timedelta(days=Models.Config.COOLDOWN):
+                    ) - _timestamp < self.cooldown:
                         continue
                     elif _version > version:
                         return _tag
