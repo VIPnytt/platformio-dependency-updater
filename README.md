@@ -62,13 +62,13 @@ Defaults to `dependencies,platformio`.
 
 Change the limit on the maximum number of pull requests for version updates open at any time.
 
-Default is `5` PRs.
+Default is `5` concurrent PRs.
 
 ### `project-dir`
 
 Specify the path to project directory.
 
-Defaults to `.` (the root of the repository).
+Defaults to repository root (`.`).
 
 ## Full example
 
