@@ -50,7 +50,7 @@ jobs:
 
 Defines a cooldown period for dependency updates, allowing updates to be delayed for a configurable number of days.
 
-Defaults `3` days.
+Default is `3` days.
 
 ### `labels`
 
@@ -62,7 +62,7 @@ Defaults to `dependencies,platformio`.
 
 Change the limit on the maximum number of pull requests for version updates open at any time.
 
-Defaults to `5` PRs.
+Default is `5` PRs.
 
 ### `project-dir`
 
@@ -77,7 +77,7 @@ name: PlatformIO Dependency Updater
 
 on:
   schedule:
-    - cron: "0 9 * * 1" # Mondays at 09:00 UTC
+    - cron: "0 9 * * 1-5" # Weekdays at 09:00 UTC
 
 jobs:
   platformio:
