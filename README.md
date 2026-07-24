@@ -46,12 +46,59 @@ jobs:
 
 ## Options
 
-| Option                     | Default value             | Description                                                            |
-| -------------------------- | ------------------------- | ---------------------------------------------------------------------- |
-| `cooldown`                 | `3` days                  | Delay dependency updates for a number of days.                         |
-| `labels`                   | `dependencies,platformio` | Comma-separated list of labels to apply to PRs.                        |
-| `open-pull-requests-limit` | `5` PRs                   | Limits the maximum number of PRs for version updates open at any time. |
-| `project-dir`              | Repository root `.`       | Path to project directory containing `platformio.ini`.                 |
+### `cooldown`
+
+Defines a cooldown period for dependency updates, allowing updates to be delayed for a configurable number of days.
+
+Defaults `3` days.
+
+### `labels`
+
+Specify your own labels for all pull requests raised. Multiple labels can be specified as a comma-separated list.
+
+Defaults to `dependencies,platformio`.
+
+### `open-pull-requests-limit`
+
+Change the limit on the maximum number of pull requests for version updates open at any time.
+
+Defaults to `5` PRs.
+
+### `project-dir`
+
+Specify the path to project directory.
+
+Defaults to `.` (the root of the repository).
+
+## Full example
+
+```yaml
+name: PlatformIO Dependency Updater
+
+on:
+  schedule:
+    - cron: "0 9 * * 1" # Mondays at 09:00 UTC
+
+jobs:
+  platformio:
+    name: Update PlatformIO dependencies
+    runs-on: ubuntu-slim
+    permissions:
+      contents: write      # Required for creating branches and pushing commits
+      pull-requests: write # Required for creating and modifying pull requests
+
+    steps:
+      - name: Checkout the repository
+        uses: actions/checkout@v7
+
+      - name: Check for dependency updates
+        uses: VIPnytt/platformio-dependency-updater@v1.0.0-b2
+        with:
+          cooldown: 3                     # days
+          labels: dependencies,platformio # comma-separated list
+          open-pull-requests-limit: 5     # PRs
+          project-dir: .                  # directory containing platformio.ini
+```
 
 ## Troubleshooting
 
