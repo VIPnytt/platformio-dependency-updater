@@ -2,14 +2,12 @@
 
 A GitHub Action that checks `platformio.ini` for dependency updates and creates pull requests when newer versions become available.
 
-## Features
+## Highlights
 
 * Multiple dependency sources; *PlatformIO*, *Espressif*, *GitHub*, *GitLab*, *Bitbucket*, and *Arduino*
-* Supports pre-release versions and custom package versions
-* PRs include links to release notes and changelog when available
-* Applies the `dependencies` and `platformio` labels if they exist
-* Keeps PRs manageable with a maximum of 5 open dependency PRs
-* Built-in 3-day cooldown for new releases to avoid faulty versions
+* Release notes included in the PR description, when available
+* Channel-aware pre-release handling
+* Support for custom platform-package versions
 * Pauses updates for inactive repositories after 3 months
 
 ## Limitations
@@ -40,25 +38,67 @@ jobs:
 
     steps:
       - name: Checkout the repository
-        uses: actions/checkout
+        uses: actions/checkout@v7
 
       - name: Check for dependency updates
-        uses: VIPnytt/platformio-dependency-updater
+        uses: VIPnytt/platformio-dependency-updater@v1.0.0-b2
 ```
 
-## How updates work
+## Options
 
-The action performs the following steps:
+### `cooldown`
 
-1. Reads dependency definitions from `platformio.ini`
-2. Resolves the dependency provider
-3. Queries available versions
-4. Compares the current version with available releases or tags
-5. Creates a dedicated update branch
-6. Updates the dependency reference
-7. Opens a pull request
+Defines a cooldown period for dependency updates, allowing updates to be delayed for a configurable number of days.
 
-Existing dependency pull requests are automatically managed to avoid duplicates and keep updates current.
+Default is `3` days.
+
+### `labels`
+
+Specify your own labels for all pull requests raised. Multiple labels can be specified as a comma-separated list.
+
+Defaults to `dependencies,platformio`.
+
+### `open-pull-requests-limit`
+
+Change the limit on the maximum number of pull requests for version updates open at any time.
+
+Default is `5` concurrent PRs.
+
+### `project-dir`
+
+Specify the path to project directory.
+
+Defaults to repository root (`.`).
+
+## Full example
+
+```yaml
+name: PlatformIO Dependency Updater
+
+on:
+  schedule:
+    - cron: "0 9 * * 1-5" # Weekdays at 09:00 UTC
+
+jobs:
+  platformio:
+    name: Update PlatformIO dependencies
+    runs-on: ubuntu-slim
+    permissions:
+      contents: write      # Required for creating branches and pushing commits
+      pull-requests: write # Required for creating and modifying pull requests
+
+    steps:
+      - name: Checkout the repository
+        uses: actions/checkout@v7
+
+      - name: Check for dependency updates
+        uses: VIPnytt/platformio-dependency-updater@v1.0.0-b2
+        with:
+          cooldown: 3                     # days
+          labels: dependencies,platformio # comma-separated list
+          open-pull-requests-limit: 5     # PRs
+          project-dir: .                  # directory containing platformio.ini
+```
 
 ## Troubleshooting
 
