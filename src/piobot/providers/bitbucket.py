@@ -73,7 +73,7 @@ class Resolve:
     def __init__(self, cooldown: datetime.timedelta) -> None:
         """
         Initialize a Bitbucket dependency URL resolver with the minimum tag age required for eligibility.
-        
+
         Parameters:
             cooldown (datetime.timedelta): Minimum age a tag must reach before it can be considered.
         """
@@ -170,10 +170,10 @@ class Resolve:
     def uuid_commit(self, dependency: models.Dependency) -> models.Result | str | None:
         """
         Create a dependency update result from a UUID-based Bitbucket commit reference.
-        
+
         Parameters:
             dependency (models.Dependency): Dependency containing the Bitbucket reference to resolve.
-        
+
         Returns:
             models.Result: Update metadata when a newer eligible tag is available.
             str: Rewritten dependency assignment when the resolved tag is not newer.
@@ -208,10 +208,10 @@ class Resolve:
     def uuid_tag(self, dependency: models.Dependency) -> models.Result | str | None:
         """
         Resolve a UUID-based Bitbucket tag dependency to an eligible tag.
-        
+
         Parameters:
             dependency (models.Dependency): Dependency specification containing the Bitbucket tag URL.
-        
+
         Returns:
             models.Result: Update details when a newer tag is available.
             str: Rewritten dependency assignment when the eligible tag is not newer.
@@ -279,15 +279,15 @@ class Resolve:
     def _request(self, url: str) -> requests.Response:
         """
         Fetch a successful JSON response from a URL.
-        
+
         Parameters:
-        	url (str): The URL to request.
-        
+            url (str): The URL to request.
+
         Returns:
-        	requests.Response: The successful HTTP response.
-        
+            requests.Response: The successful HTTP response.
+
         Raises:
-        	requests.HTTPError: If the response has an unsuccessful status code.
+            requests.HTTPError: If the response has an unsuccessful status code.
         """
         response = requests.get(
             url=url,

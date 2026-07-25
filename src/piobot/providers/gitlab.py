@@ -165,14 +165,14 @@ class Resolve:
     def tag(self, dependency: models.Dependency) -> models.Result | str | None:
         """
         Resolve a tag-based GitLab dependency to an eligible tag archive.
-        
+
         Parameters:
-        	dependency (models.Dependency): Dependency expression containing a GitLab tag archive reference.
-        
+            dependency (models.Dependency): Dependency expression containing a GitLab tag archive reference.
+
         Returns:
-        	models.Result: Update metadata when a newer eligible tag is available.
-        	str: Dependency assignment using the resolved tag.
-        	None: If the dependency format is unsupported or no eligible tag is found.
+            models.Result: Update metadata when a newer eligible tag is available.
+            str: Dependency assignment using the resolved tag.
+            None: If the dependency format is unsupported or no eligible tag is found.
         """
         match = typing.cast(MatchTag | None, self._tag.fullmatch(dependency.value))
         if not match:
@@ -202,7 +202,8 @@ class Resolve:
         )
 
     def tag_commit(self, dependency: models.Dependency) -> models.Result | str | None:
-        """Resolve a commit archive dependency to the latest eligible GitLab tag.
+        """
+        Resolve a commit archive dependency to the latest eligible GitLab tag.
 
         Parameters:
             dependency (models.Dependency): Dependency expression containing a commit archive URL and version tag.
@@ -240,7 +241,8 @@ class Resolve:
         )
 
     def _parse_link(self, url: str) -> tuple[str, str]:
-        """Extract the owner and repository names from a GitLab URL.
+        """
+        Extract the owner and repository names from a GitLab URL.
 
         Parameters:
                 url (str): A GitLab URL containing the owner and repository path.
@@ -254,12 +256,12 @@ class Resolve:
     def _request_release(self, owner: str, repo: str, version: packaging.version.Version) -> Release | None:
         """
         Finds an eligible GitLab release newer than the specified version.
-        
+
         Parameters:
             owner (str): GitLab project owner or namespace.
             repo (str): GitLab repository name.
             version (packaging.version.Version): Current dependency version.
-        
+
         Returns:
             Release | None: The first eligible release newer than the current version, the first eligible release otherwise, or None if no eligible release is found.
         """
@@ -325,14 +327,15 @@ class Resolve:
         return latest
 
     def _request(self, url: str) -> requests.Response:
-        """Fetch a JSON response from the specified URL.
-        
+        """
+        Fetch a JSON response from the specified URL.
+
         Parameters:
             url (str): The URL to request.
-        
+
         Returns:
             requests.Response: The successful HTTP response.
-        
+
         Raises:
             requests.HTTPError: If the response has an unsuccessful status code.
         """

@@ -29,8 +29,9 @@ class Resolve:
     _libraries: re.Pattern[str]
 
     def __init__(self) -> None:
-        """Initialize the resolver and load the Arduino library index.
-        
+        """
+        Initialize the resolver and load the Arduino library index.
+
         If the library index cannot be fetched, initialize with an empty library list.
         """
         self._libraries = re.compile(
@@ -53,10 +54,10 @@ class Resolve:
     def library(self, dependency: models.Dependency) -> models.Result | str | None:
         """
         Resolve an Arduino library dependency to its latest eligible version.
-        
+
         Parameters:
             dependency (models.Dependency): Dependency declaration containing the requested library version and option.
-        
+
         Returns:
             models.Result: Upgrade details when a newer library version is available.
             str: The dependency assignment when the requested version is current.

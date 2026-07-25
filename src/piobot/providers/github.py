@@ -159,12 +159,12 @@ class Resolve:
     def release_tag_archive(self, dependency: models.Dependency) -> models.Result | str | None:
         """
         Update a GitHub archive dependency to a newer release tag when available.
-        
+
         Parameters:
-        	dependency (models.Dependency): Dependency containing the GitHub archive URL.
-        
+            dependency (models.Dependency): Dependency containing the GitHub archive URL.
+
         Returns:
-        	models.Result | str | None: A release update result for a newer tag, the formatted dependency assignment when no newer tag is available, or `None` when the URL does not match or no release can be resolved.
+            models.Result | str | None: A release update result for a newer tag, the formatted dependency assignment when no newer tag is available, or `None` when the URL does not match or no release can be resolved.
         """
         match = typing.cast(MatchTag | None, self._archive_tag.fullmatch(dependency.value))
         if not match:
@@ -195,10 +195,10 @@ class Resolve:
     def release_tag_asset(self, dependency: models.Dependency) -> models.Result | str | None:
         """
         Resolve a GitHub release asset dependency to a newer release when available.
-        
+
         Parameters:
             dependency (models.Dependency): Dependency containing a GitHub release asset URL.
-        
+
         Returns:
             models.Result: Details of the newer release asset.
             str: Formatted dependency assignment when the resolved release is not newer.
@@ -239,7 +239,8 @@ class Resolve:
         return None
 
     def release_tag_ball(self, dependency: models.Dependency) -> models.Result | str | None:
-        """Resolve a GitHub tarball or zipball dependency to a newer release tag.
+        """
+        Resolve a GitHub tarball or zipball dependency to a newer release tag.
 
         Parameters:
                 dependency (models.Dependency): Dependency value containing a GitHub ball URL and tag.
@@ -277,14 +278,14 @@ class Resolve:
     def release_tag_commit_archive(self, dependency: models.Dependency) -> models.Result | str | None:
         """
         Resolve a commit-based GitHub archive dependency to a newer release when available.
-        
+
         Parameters:
-        	dependency (models.Dependency): Dependency containing the archive URL and version information.
-        
+            dependency (models.Dependency): Dependency containing the archive URL and version information.
+
         Returns:
-        	models.Result: Updated dependency details when a newer release is found.
-        	str: Formatted dependency assignment when no newer release is available.
-        	None: If the dependency format is unsupported or no release is found.
+            models.Result: Updated dependency details when a newer release is found.
+            str: Formatted dependency assignment when no newer release is available.
+            None: If the dependency format is unsupported or no release is found.
         """
         match = typing.cast(MatchCommit | None, self._archive_commit.fullmatch(dependency.value))
         if not match:
@@ -391,14 +392,14 @@ class Resolve:
     def tag_archive(self, dependency: models.Dependency) -> models.Result | str | None:
         """
         Resolve a GitHub archive dependency to a newer compatible tag.
-        
+
         Parameters:
-        	dependency (models.Dependency): Dependency containing the archive URL and current tag.
-        
+            dependency (models.Dependency): Dependency containing the archive URL and current tag.
+
         Returns:
-        	models.Result: Update details when a newer tag is available.
-        	str: Formatted dependency assignment when no newer tag is available.
-        	None: If the dependency format does not match or no suitable tag is found.
+            models.Result: Update details when a newer tag is available.
+            str: Formatted dependency assignment when no newer tag is available.
+            None: If the dependency format does not match or no suitable tag is found.
         """
         match = typing.cast(MatchTag | None, self._archive_tag.fullmatch(dependency.value))
         if not match:
@@ -546,12 +547,12 @@ class Resolve:
     def tag_commit_git(self, dependency: models.Dependency) -> models.Result | str | None:
         """
         Update a Git dependency pinned to a commit with a newer compatible tag.
-        
+
         Parameters:
-        	dependency (models.Dependency): Dependency containing the repository, commit, and tag information.
-        
+            dependency (models.Dependency): Dependency containing the repository, commit, and tag information.
+
         Returns:
-        	models.Result | str | None: An update result when a newer tag is available, a formatted dependency assignment otherwise, or `None` if the dependency cannot be resolved.
+            models.Result | str | None: An update result when a newer tag is available, a formatted dependency assignment otherwise, or `None` if the dependency cannot be resolved.
         """
         match = typing.cast(MatchCommit | None, self._git_commit.fullmatch(dependency.value))
         if not match:
@@ -583,10 +584,10 @@ class Resolve:
     def tag_git(self, dependency: models.Dependency) -> models.Result | str | None:
         """
         Resolve a GitHub git dependency to a newer compatible tag.
-        
+
         Parameters:
             dependency (models.Dependency): Dependency whose GitHub git URL and current tag are evaluated.
-        
+
         Returns:
             models.Result: Update details when a newer tag is available.
             str: Formatted dependency assignment when no newer tag is available.
@@ -682,7 +683,8 @@ class Resolve:
         return latest
 
     def _request_release_id(self, name: str, tag: str) -> Release:
-        """Fetch release details for a repository tag.
+        """
+        Fetch release details for a repository tag.
 
         Parameters:
                 name (str): The repository name.
@@ -699,11 +701,11 @@ class Resolve:
     def _request_tag(self, name: str, version: packaging.version.Version) -> Tag | None:
         """
         Find an eligible GitHub tag newer than the specified version.
-        
+
         Parameters:
             name (str): GitHub repository name in `owner/repository` format.
             version (packaging.version.Version): Baseline version for selecting a tag.
-        
+
         Returns:
             Tag | None: The first eligible newer tag, the latest fallback tag, or `None` if no tag is available.
         """
@@ -732,7 +734,8 @@ class Resolve:
         return latest
 
     def _request_tag_id(self, owner: str, repo: str, tag: str) -> TagID:
-        """Retrieve metadata for a GitHub repository tag reference.
+        """
+        Retrieve metadata for a GitHub repository tag reference.
 
         Parameters:
                 owner (str): GitHub repository owner.
