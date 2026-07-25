@@ -1,11 +1,12 @@
 import datetime
 import os
-import packaging.version
 import re
-import requests
 import typing
 
-from .. import Models
+import packaging.version
+import requests
+
+from .. import models
 
 
 class Asset(typing.TypedDict):
@@ -118,15 +119,15 @@ class Resolve:
             r"^(?:(?P<package>(?:[^/\s]+/)?[^/\s]+)?\s*@\s*)?(?P<variant>git|git\+https|git\+ssh|https)://github\.com/(?P<name>[^/\s]+/[^/\s]+)\.git#(?P<tag>[^/\s]+)(?:\s*;.*)?$"
         )
 
-    def release_commit_git(self, dependency: Models.Dependency) -> Models.Result | str | None:
+    def release_commit_git(self, dependency: models.Dependency) -> models.Result | str | None:
         """
         Resolve a GitHub commit-based Git dependency to the commit associated with a newer release tag.
 
         Parameters:
-            dependency (Models.Dependency): Dependency value containing the GitHub repository, commit, and release tag.
+            dependency (models.Dependency): Dependency value containing the GitHub repository, commit, and release tag.
 
         Returns:
-            Models.Result | str | None: A release update result, a formatted dependency string when no newer release exists, or `None` when the dependency does not match or no release is found.
+            models.Result | str | None: A release update result, a formatted dependency string when no newer release exists, or `None` when the dependency does not match or no release is found.
         """
         match = typing.cast(MatchCommit | None, self._git_commit.fullmatch(dependency.value))
         if not match:
@@ -138,7 +139,7 @@ class Resolve:
         commit = self._request_tag_id(owner, repo, release["tag_name"])["object"]["sha"]
         value = f"{'' if match['package'] is None else f'{match["package"]} @ '}{match['variant']}://github.com/{owner}/{repo}.git#{commit} ; {release['tag_name']}"
         return (
-            Models.Result(
+            models.Result(
                 body="\n".join(
                     [
                         f"Bumps [{owner}/{repo}](https://github.com/{owner}/{repo}) from {match['tag']} to {release['tag_name']}.",
@@ -155,17 +156,15 @@ class Resolve:
             else f"{dependency.option} = {value}"
         )
 
-    def release_tag_archive(self, dependency: Models.Dependency) -> Models.Result | str | None:
+    def release_tag_archive(self, dependency: models.Dependency) -> models.Result | str | None:
         """
-        Resolve a GitHub archive dependency from its current tag to a newer release tag.
+        Update a GitHub archive dependency to a newer release tag when available.
 
-        Args:
-            dependency (Models.Dependency): Dependency containing the GitHub archive URL.
+        Parameters:
+            dependency (models.Dependency): Dependency containing the GitHub archive URL.
 
         Returns:
-            Models.Result | str | None: A release update result, a formatted dependency
-            value when no newer release is available, or `None` when the dependency
-            does not match or no release can be resolved.
+            models.Result | str | None: A release update result for a newer tag, the formatted dependency assignment when no newer tag is available, or `None` when the URL does not match or no release can be resolved.
         """
         match = typing.cast(MatchTag | None, self._archive_tag.fullmatch(dependency.value))
         if not match:
@@ -176,7 +175,7 @@ class Resolve:
         owner, repo = self._parse_link(release["url"])
         value = f"{'' if match['package'] is None else f'{match["package"]} @ '}https://github.com/{owner}/{repo}/archive/refs/tags/{release['tag_name']}.{match['variant']} ; {release['tag_name']}"
         return (
-            Models.Result(
+            models.Result(
                 body="\n".join(
                     [
                         f"Bumps [{owner}/{repo}](https://github.com/{owner}/{repo}) from {match['tag']} to {release['tag_name']}.",
@@ -193,16 +192,17 @@ class Resolve:
             else f"{dependency.option} = {value}"
         )
 
-    def release_tag_asset(self, dependency: Models.Dependency) -> Models.Result | str | None:
-        """Resolve a GitHub release asset dependency to a newer release when available.
+    def release_tag_asset(self, dependency: models.Dependency) -> models.Result | str | None:
+        """
+        Resolve a GitHub release asset dependency to a newer release when available.
 
         Parameters:
-            dependency (Models.Dependency): Dependency value containing a GitHub release asset URL.
+            dependency (models.Dependency): Dependency containing a GitHub release asset URL.
 
         Returns:
-            Models.Result: Release update details when a newer release asset is found.
+            models.Result: Details of the newer release asset.
             str: Formatted dependency assignment when the resolved release is not newer.
-            None: If the dependency does not match or no corresponding release asset is found.
+            None: If the dependency does not match, no release is found, or no matching asset exists.
         """
         match = typing.cast(MatchDownload | None, self._download.fullmatch(dependency.value))
         if not match:
@@ -220,7 +220,7 @@ class Resolve:
             owner, repo = self._parse_link(release["url"])
             value = f"{'' if match['package'] is None else f'{match["package"]} @ '}{asset['browser_download_url']} ; {release['tag_name']}"
             return (
-                Models.Result(
+                models.Result(
                     body="\n".join(
                         [
                             f"Bumps [{owner}/{repo}](https://github.com/{owner}/{repo}) from {match['tag']} to {release['tag_name']}.",
@@ -238,14 +238,15 @@ class Resolve:
             )
         return None
 
-    def release_tag_ball(self, dependency: Models.Dependency) -> Models.Result | str | None:
-        """Resolve a GitHub tarball or zipball dependency to a newer release tag.
+    def release_tag_ball(self, dependency: models.Dependency) -> models.Result | str | None:
+        """
+        Resolve a GitHub tarball or zipball dependency to a newer release tag.
 
         Parameters:
-                dependency (Models.Dependency): Dependency value containing a GitHub ball URL and tag.
+                dependency (models.Dependency): Dependency value containing a GitHub ball URL and tag.
 
         Returns:
-                Models.Result | str | None: A release update result or formatted dependency value, or `None` when the value does not match or no suitable release is found.
+                models.Result | str | None: A release update result or formatted dependency value, or `None` when the value does not match or no suitable release is found.
         """
         match = typing.cast(MatchTag | None, self._ball_tag.fullmatch(dependency.value))
         if not match:
@@ -257,7 +258,7 @@ class Resolve:
         owner, repo = self._parse_link(ball)
         value = f"{'' if match['package'] is None else f'{match["package"]} @ '}{ball} ; {release['tag_name']}"
         return (
-            Models.Result(
+            models.Result(
                 body="\n".join(
                     [
                         f"Bumps [{owner}/{repo}](https://github.com/{owner}/{repo}) from {match['tag']} to {release['tag_name']}.",
@@ -274,17 +275,17 @@ class Resolve:
             else f"{dependency.option} = {value}"
         )
 
-    def release_tag_commit_archive(self, dependency: Models.Dependency) -> Models.Result | str | None:
+    def release_tag_commit_archive(self, dependency: models.Dependency) -> models.Result | str | None:
         """
         Resolve a commit-based GitHub archive dependency to a newer release when available.
 
         Parameters:
-                dependency (Models.Dependency): Dependency containing the archive URL and version information.
+            dependency (models.Dependency): Dependency containing the archive URL and version information.
 
         Returns:
-                Models.Result: Updated dependency details when a newer release is found.
-                str: Formatted dependency assignment when no newer release is available.
-                None: If the dependency does not match the supported archive format or no release is found.
+            models.Result: Updated dependency details when a newer release is found.
+            str: Formatted dependency assignment when no newer release is available.
+            None: If the dependency format is unsupported or no release is found.
         """
         match = typing.cast(MatchCommit | None, self._archive_commit.fullmatch(dependency.value))
         if not match:
@@ -296,7 +297,7 @@ class Resolve:
         commit = self._request_tag_id(owner, repo, release["tag_name"])["object"]["sha"]
         value = f"{'' if match['package'] is None else f'{match["package"]} @ '}https://github.com/{owner}/{repo}/archive/{commit}.{match['variant']} ; {release['tag_name']}"
         return (
-            Models.Result(
+            models.Result(
                 body="\n".join(
                     [
                         f"Bumps [{owner}/{repo}](https://github.com/{owner}/{repo}) from {match['tag']} to {release['tag_name']}.",
@@ -313,15 +314,15 @@ class Resolve:
             else f"{dependency.option} = {value}"
         )
 
-    def release_tag_commit_ball(self, dependency: Models.Dependency) -> Models.Result | str | None:
+    def release_tag_commit_ball(self, dependency: models.Dependency) -> models.Result | str | None:
         """
         Resolve a commit-based API tarball or zipball dependency to a newer GitHub release.
 
         Parameters:
-                dependency (Models.Dependency): Dependency value containing the repository, commit, tag, and archive variant.
+                dependency (models.Dependency): Dependency value containing the repository, commit, tag, and archive variant.
 
         Returns:
-                Models.Result | str | None: A release update result or formatted dependency assignment, or `None` when the value does not match or no suitable release is found.
+                models.Result | str | None: A release update result or formatted dependency assignment, or `None` when the value does not match or no suitable release is found.
         """
         match = typing.cast(MatchCommit | None, self._ball_commit.fullmatch(dependency.value))
         if not match:
@@ -333,7 +334,7 @@ class Resolve:
         commit = self._request_tag_id(owner, repo, release["tag_name"])["object"]["sha"]
         value = f"{'' if match['package'] is None else f'{match["package"]} @ '}https://api.github.com/repos/{owner}/{repo}/{match['variant']}ball/{commit} ; {release['tag_name']}"
         return (
-            Models.Result(
+            models.Result(
                 body="\n".join(
                     [
                         f"Bumps [{owner}/{repo}](https://github.com/{owner}/{repo}) from {match['tag']} to {release['tag_name']}.",
@@ -350,15 +351,15 @@ class Resolve:
             else f"{dependency.option} = {value}"
         )
 
-    def release_tag_git(self, dependency: Models.Dependency) -> Models.Result | str | None:
+    def release_tag_git(self, dependency: models.Dependency) -> models.Result | str | None:
         """
         Update a GitHub Git dependency to a newer release tag.
 
         Parameters:
-                dependency (Models.Dependency): Dependency value containing the repository and current release tag.
+                dependency (models.Dependency): Dependency value containing the repository and current release tag.
 
         Returns:
-                Models.Result: Release update details when a newer release is available.
+                models.Result: Release update details when a newer release is available.
                 str: Formatted dependency assignment when the resolved release is not newer.
                 None: If the dependency does not match the supported Git tag format or no release is found.
         """
@@ -371,7 +372,7 @@ class Resolve:
         owner, repo = self._parse_link(release["url"])
         value = f"{'' if match['package'] is None else f'{match["package"]} @ '}{match['variant']}://github.com/{owner}/{repo}.git#{release['tag_name']} ; {release['tag_name']}"
         return (
-            Models.Result(
+            models.Result(
                 body="\n".join(
                     [
                         f"Bumps [{owner}/{repo}](https://github.com/{owner}/{repo}) from {match['tag']} to {release['tag_name']}.",
@@ -388,17 +389,17 @@ class Resolve:
             else f"{dependency.option} = {value}"
         )
 
-    def tag_archive(self, dependency: Models.Dependency) -> Models.Result | str | None:
+    def tag_archive(self, dependency: models.Dependency) -> models.Result | str | None:
         """
         Resolve a GitHub archive dependency to a newer compatible tag.
 
         Parameters:
-                dependency (Models.Dependency): Dependency containing the archive URL and its current tag.
+            dependency (models.Dependency): Dependency containing the archive URL and current tag.
 
         Returns:
-                Models.Result: Update details when a newer tag is available.
-                str: A formatted dependency assignment when no newer tag is available.
-                None: If the dependency does not match the expected archive format or no suitable tag is found.
+            models.Result: Update details when a newer tag is available.
+            str: Formatted dependency assignment when no newer tag is available.
+            None: If the dependency format does not match or no suitable tag is found.
         """
         match = typing.cast(MatchTag | None, self._archive_tag.fullmatch(dependency.value))
         if not match:
@@ -410,7 +411,7 @@ class Resolve:
         owner, repo = self._parse_link(tag["commit"]["url"])
         value = f"{'' if match['package'] is None else f'{match["package"]} @ '}https://github.com/{owner}/{repo}/archive/refs/tags/{tag['name']}.{match['variant']} ; {tag['name']}"
         return (
-            Models.Result(
+            models.Result(
                 body="\n".join(
                     [
                         f"Bumps [{owner}/{repo}](https://github.com/{owner}/{repo}) from {match['tag']} to {tag['name']}.",
@@ -427,15 +428,15 @@ class Resolve:
             else f"{dependency.option} = {value}"
         )
 
-    def tag_ball(self, dependency: Models.Dependency) -> Models.Result | str | None:
+    def tag_ball(self, dependency: models.Dependency) -> models.Result | str | None:
         """
         Resolve a GitHub tarball or zipball dependency to a newer compatible tag.
 
         Parameters:
-            dependency (Models.Dependency): Dependency containing the GitHub ball URL and update option.
+            dependency (models.Dependency): Dependency containing the GitHub ball URL and update option.
 
         Returns:
-            Models.Result: Update details when a newer tag is found.
+            models.Result: Update details when a newer tag is found.
             str: Formatted dependency assignment when the resolved tag is not newer.
             None: If the dependency format is unsupported or no suitable tag is found.
         """
@@ -450,7 +451,7 @@ class Resolve:
         owner, repo = self._parse_link(ball)
         value = f"{'' if match['package'] is None else f'{match["package"]} @ '}{ball} ; {tag['name']}"
         return (
-            Models.Result(
+            models.Result(
                 body="\n".join(
                     [
                         f"Bumps [{owner}/{repo}](https://github.com/{owner}/{repo}) from {match['tag']} to {tag['name']}.",
@@ -467,15 +468,15 @@ class Resolve:
             else f"{dependency.option} = {value}"
         )
 
-    def tag_commit_archive(self, dependency: Models.Dependency) -> Models.Result | str | None:
+    def tag_commit_archive(self, dependency: models.Dependency) -> models.Result | str | None:
         """
         Resolve a GitHub archive dependency that identifies a commit and tag.
 
         Parameters:
-            dependency (Models.Dependency): Dependency specification containing the archive URL.
+            dependency (models.Dependency): Dependency specification containing the archive URL.
 
         Returns:
-            Models.Result | str | None: Updated dependency metadata or formatted dependency string, or `None` when the value is not a matching archive URL or no suitable tag is found.
+            models.Result | str | None: Updated dependency metadata or formatted dependency string, or `None` when the value is not a matching archive URL or no suitable tag is found.
         """
         match = typing.cast(MatchCommit | None, self._archive_commit.fullmatch(dependency.value))
         if not match:
@@ -487,7 +488,7 @@ class Resolve:
         owner, repo = self._parse_link(tag["commit"]["url"])
         value = f"{'' if match['package'] is None else f'{match["package"]} @ '}https://github.com/{owner}/{repo}/archive/{tag['commit']['sha']}.{match['variant']} ; {tag['name']}"
         return (
-            Models.Result(
+            models.Result(
                 body="\n".join(
                     [
                         f"Bumps [{owner}/{repo}](https://github.com/{owner}/{repo}) from {match['tag']} to {tag['name']}.",
@@ -504,15 +505,15 @@ class Resolve:
             else f"{dependency.option} = {value}"
         )
 
-    def tag_commit_ball(self, dependency: Models.Dependency) -> Models.Result | str | None:
+    def tag_commit_ball(self, dependency: models.Dependency) -> models.Result | str | None:
         """
         Resolve a commit-based GitHub tarball or zipball dependency to a newer tag.
 
         Parameters:
-                dependency (Models.Dependency): Dependency containing the GitHub ball URL and version tag.
+                dependency (models.Dependency): Dependency containing the GitHub ball URL and version tag.
 
         Returns:
-                Models.Result: Update details when a newer tag is available.
+                models.Result: Update details when a newer tag is available.
                 str: Formatted dependency replacement when no newer tag is available.
                 None: If the dependency does not match the supported format or no tag is found.
         """
@@ -526,7 +527,7 @@ class Resolve:
         owner, repo = self._parse_link(tag["commit"]["url"])
         value = f"{'' if match['package'] is None else f'{match["package"]} @ '}https://api.github.com/repos/{owner}/{repo}/{match['variant']}ball/{tag['commit']['sha']} ; {tag['name']}"
         return (
-            Models.Result(
+            models.Result(
                 body="\n".join(
                     [
                         f"Bumps [{owner}/{repo}](https://github.com/{owner}/{repo}) from {match['tag']} to {tag['name']}.",
@@ -543,15 +544,15 @@ class Resolve:
             else f"{dependency.option} = {value}"
         )
 
-    def tag_commit_git(self, dependency: Models.Dependency) -> Models.Result | str | None:
+    def tag_commit_git(self, dependency: models.Dependency) -> models.Result | str | None:
         """
-        Resolve a Git dependency pinned to a commit by updating it to a newer compatible tag.
+        Update a Git dependency pinned to a commit with a newer compatible tag.
 
         Parameters:
-            dependency (Models.Dependency): Dependency value containing the repository, commit, and tag information.
+            dependency (models.Dependency): Dependency containing the repository, commit, and tag information.
 
         Returns:
-            Models.Result | str | None: A version update result, a formatted dependency assignment when no newer tag is available, or `None` when the dependency does not match or no tag can be resolved.
+            models.Result | str | None: An update result when a newer tag is available, a formatted dependency assignment otherwise, or `None` if the dependency cannot be resolved.
         """
         match = typing.cast(MatchCommit | None, self._git_commit.fullmatch(dependency.value))
         if not match:
@@ -563,7 +564,7 @@ class Resolve:
         owner, repo = self._parse_link(tag["commit"]["url"])
         value = f"{'' if match['package'] is None else f'{match["package"]} @ '}{match['variant']}://github.com/{owner}/{repo}.git#{tag['commit']['sha']} ; {tag['name']}"
         return (
-            Models.Result(
+            models.Result(
                 body="\n".join(
                     [
                         f"Bumps [{owner}/{repo}](https://github.com/{owner}/{repo}) from {match['tag']} to {tag['name']}.",
@@ -580,7 +581,18 @@ class Resolve:
             else f"{dependency.option} = {value}"
         )
 
-    def tag_git(self, dependency: Models.Dependency) -> Models.Result | str | None:
+    def tag_git(self, dependency: models.Dependency) -> models.Result | str | None:
+        """
+        Resolve a GitHub git dependency to a newer compatible tag.
+
+        Parameters:
+            dependency (models.Dependency): Dependency whose GitHub git URL and current tag are evaluated.
+
+        Returns:
+            models.Result: Update details when a newer tag is available.
+            str: Formatted dependency assignment when no newer tag is available.
+            None: If the dependency URL cannot be parsed or no compatible tag is found.
+        """
         match = typing.cast(MatchTag | None, self._git_tag.fullmatch(dependency.value))
         if not match:
             return None
@@ -591,7 +603,7 @@ class Resolve:
         owner, repo = self._parse_link(tag["commit"]["url"])
         value = f"{'' if match['package'] is None else f'{match["package"]} @ '}{match['variant']}://github.com/{owner}/{repo}.git#{tag['name']} ; {tag['name']}"
         return (
-            Models.Result(
+            models.Result(
                 body="\n".join(
                     [
                         f"Bumps [{owner}/{repo}](https://github.com/{owner}/{repo}) from {match['tag']} to {tag['name']}.",
@@ -644,7 +656,7 @@ class Resolve:
         if not prerelease:
             try:
                 prerelease = self._request_release_id(name, tag)["prerelease"]
-            except Exception:
+            except requests.exceptions.RequestException:
                 print(f"::debug::Invalid release: {name} {tag}")
         latest = None
         url = f"https://api.github.com/repos/{name}/releases?per_page=100"
@@ -654,13 +666,10 @@ class Resolve:
                 try:
                     _version = packaging.version.Version(_release["tag_name"])
                     _published_at = _release.get("published_at")
-                    if (
-                        (_version.is_prerelease and not prerelease)
-                        or _published_at is None
-                        or datetime.datetime.now(datetime.timezone.utc)
-                        - datetime.datetime.fromisoformat(_published_at.replace("Z", "+00:00"))
-                        < self.cooldown
-                    ):
+                    if _published_at is None or (_version.is_prerelease and not prerelease):
+                        continue
+                    _timestamp = datetime.datetime.fromisoformat(_published_at)
+                    if datetime.datetime.now(_timestamp.tzinfo) - _timestamp < self.cooldown:
                         continue
                     elif _version > version:
                         return _release
@@ -674,7 +683,8 @@ class Resolve:
         return latest
 
     def _request_release_id(self, name: str, tag: str) -> Release:
-        """Fetch release details for a repository tag.
+        """
+        Fetch release details for a repository tag.
 
         Parameters:
                 name (str): The repository name.
@@ -690,14 +700,14 @@ class Resolve:
 
     def _request_tag(self, name: str, version: packaging.version.Version) -> Tag | None:
         """
-        Find an eligible GitHub tag for a requested version.
+        Find an eligible GitHub tag newer than the specified version.
 
         Parameters:
             name (str): GitHub repository name in `owner/repository` format.
-            version (packaging.version.Version): Version used to identify newer compatible tags.
+            version (packaging.version.Version): Baseline version for selecting a tag.
 
         Returns:
-            Tag | None: The first eligible newer tag, the first acceptable fallback tag, or `None` if no eligible tag is found.
+            Tag | None: The first eligible newer tag, the latest fallback tag, or `None` if no tag is available.
         """
         latest = None
         url = f"https://api.github.com/repos/{name}/tags?per_page=100"
@@ -710,13 +720,8 @@ class Resolve:
                         continue
                     elif _version > version:
                         _commit = self._request_commit_id(name, _tag["commit"]["sha"])
-                        if (
-                            datetime.datetime.now(datetime.timezone.utc)
-                            - datetime.datetime.fromisoformat(
-                                _commit["commit"]["committer"]["date"].replace("Z", "+00:00")
-                            )
-                            < self.cooldown
-                        ):
+                        _timestamp = datetime.datetime.fromisoformat(_commit["commit"]["committer"]["date"])
+                        if datetime.datetime.now(_timestamp.tzinfo) - _timestamp < self.cooldown:
                             continue
                         return _tag
                     elif not latest:
@@ -729,7 +734,8 @@ class Resolve:
         return latest
 
     def _request_tag_id(self, owner: str, repo: str, tag: str) -> TagID:
-        """Retrieve metadata for a GitHub repository tag reference.
+        """
+        Retrieve metadata for a GitHub repository tag reference.
 
         Parameters:
                 owner (str): GitHub repository owner.
@@ -756,7 +762,7 @@ class Resolve:
         """
         headers = {
             "Accept": "application/vnd.github+json",
-            "User-Agent": Models.Config.USER_AGENT,
+            "User-Agent": models.Config.USER_AGENT,
             "X-GitHub-Api-Version": "2026-03-10",
         }
         token = os.getenv("GITHUB_TOKEN")
@@ -765,7 +771,7 @@ class Resolve:
         response = requests.get(
             url=url,
             headers=headers,
-            timeout=Models.Config.TIMEOUT,
+            timeout=models.Config.TIMEOUT,
         )
         response.raise_for_status()
         return response

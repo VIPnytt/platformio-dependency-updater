@@ -1,31 +1,27 @@
 import datetime
 import fileinput
-import git
-import github
 import os
 import pathlib
 import re
 import sys
 import typing
 
-from . import Models
-from .providers import Arduino
-from .providers import Bitbucket
-from .providers import Espressif
-from .providers import GitHub
-from .providers import GitLab
-from .providers import PlatformIO
+import git as gitpython
+import github as pygithub
+
+from . import models
+from .providers import arduino, bitbucket, espressif, github, gitlab, platformio
 
 
 class Piobot:
     cooldown: datetime.timedelta
-    dependencies: list[Models.Dependency]
+    dependencies: list[models.Dependency]
     ini: pathlib.Path
     labels: set[str]
     ref: str
     repository: str
-    _git: git.Repo
-    _github: github.Github
+    _git: gitpython.Repo
+    _github: pygithub.Github
     _token: str
 
     def __init__(self) -> None:
@@ -34,37 +30,37 @@ class Piobot:
 
         Initialization stops after loading configuration if the latest commit is more than 90 days old. Otherwise, Git and GitHub access are configured and dependencies are loaded from the file.
         """
-        self.cooldown = datetime.timedelta(days=int(os.getenv(Models.Inputs.COOLDOWN, Models.Defaults.COOLDOWN)))
-        self.dependencies = list()
+        self.cooldown = datetime.timedelta(days=int(os.getenv(models.Inputs.COOLDOWN, models.Defaults.COOLDOWN)))
+        self.dependencies = []
         self.ini = (
-            (pathlib.Path(os.getenv(Models.Inputs.PROJECT_DIR, Models.Defaults.PROJECT_DIR)) / "platformio.ini")
+            (pathlib.Path(os.getenv(models.Inputs.PROJECT_DIR, models.Defaults.PROJECT_DIR)) / "platformio.ini")
             .resolve(True)
             .relative_to(pathlib.Path.cwd())
         )
-        self.labels = {label.strip() for label in os.getenv(Models.Inputs.LABELS, Models.Defaults.LABELS).split(",")}
+        self.labels = {label.strip() for label in os.getenv(models.Inputs.LABELS, models.Defaults.LABELS).split(",")}
         self.ref = os.getenv("GITHUB_REF_NAME", "")
         self.repository = os.getenv("GITHUB_REPOSITORY", "")
         self._token = os.getenv("GITHUB_TOKEN", "")
-        self._git = git.Repo()
+        self._git = gitpython.Repo()
         if datetime.datetime.now(
             self._git.head.commit.committed_datetime.tzinfo
         ) - self._git.head.commit.committed_datetime > datetime.timedelta(days=90):
-            return None
+            return
         self._git.config_writer().set_value("user", "name", "github-actions[bot]").release()
         self._git.config_writer().set_value(
             "user", "email", "41898282+github-actions[bot]@users.noreply.github.com"
         ).release()
         self._git.remote().set_url(f"https://x-access-token:{self._token}@github.com/{self.repository}.git")
-        self._github = github.Github(auth=github.Auth.Token(self._token))
+        self._github = pygithub.Github(auth=pygithub.Auth.Token(self._token))
         _variable = re.compile(r"^\${\S+\.(?:lib_deps|platform|platform_packages)}(?:\s*;.*)?$")
         i = 0
-        option: Models.Option | None = None
+        option: models.Option | None = None
         with self.ini.open(encoding="utf-8") as file:
             for line in file:
                 i += 1
-                if line.startswith(";") or line.startswith("#") or len(line.strip()) == 0:
+                if line.startswith((";", "#")) or len(line.strip()) == 0:
                     continue
-                elif line.startswith("\t") or line.startswith("  "):
+                elif line.startswith(("\t", "  ")):
                     _line = line.strip()
                     if (
                         option is not None
@@ -73,22 +69,22 @@ class Piobot:
                         and not _line.startswith("#")
                         and _variable.fullmatch(_line) is None
                     ):
-                        self.dependencies.append(Models.Dependency(line=i, option=option, value=_line))
+                        self.dependencies.append(models.Dependency(line=i, option=option, value=_line))
                     continue
                 key, _, value = line.partition("=")
                 _key = key.rstrip()
-                if _key in Models.Option:
+                if _key in models.Option:
                     _value = value.strip()
                     if len(_value) > 0 and _variable.fullmatch(_value) is None:
                         self.dependencies.append(
-                            Models.Dependency(
+                            models.Dependency(
                                 line=i,
-                                option=typing.cast(Models.Option, _key),
+                                option=typing.cast(models.Option, _key),
                                 value=_value,
                             )
                         )
-                    if _key != Models.Option.PLATFORM:
-                        option = typing.cast(Models.Option, _key)
+                    if _key != models.Option.PLATFORM:
+                        option = typing.cast(models.Option, _key)
                         continue
                 option = None
 
@@ -107,11 +103,12 @@ class Piobot:
                 break
 
     def arduino(self) -> None:
-        resolve = Arduino.Resolve()
+        """Resolve Arduino library dependencies and handle available updates."""
+        resolve = arduino.Resolve()
         for dependency in self.dependencies.copy():
             try:
                 self._handle(dependency, resolve.library(dependency))
-            except Exception as e:
+            except Exception as e:  # ruff:ignore[BLE001]
                 print(f"::warning Arduino::{e}")
 
     def bitbucket(self) -> None:
@@ -119,7 +116,7 @@ class Piobot:
         Resolves unresolved dependencies using Bitbucket repository references.
 
         """
-        resolve = Bitbucket.Resolve(self.cooldown)
+        resolve = bitbucket.Resolve(self.cooldown)
         for description, handler in {
             "uuid commit": resolve.uuid_commit,
             "uuid tag": resolve.uuid_tag,
@@ -129,14 +126,14 @@ class Piobot:
             for dependency in self.dependencies.copy():
                 try:
                     self._handle(dependency, handler(dependency))
-                except Exception as e:
+                except Exception as e:  # ruff:ignore[BLE001]
                     print(f"::warning Bitbucket {description}::{e}")
             if len(self.dependencies) == 0:
                 break
 
     def espressif(self) -> None:
         """Resolve dependencies using the Espressif component registry."""
-        resolve = Espressif.Resolve(self.cooldown)
+        resolve = espressif.Resolve(self.cooldown)
         for description, handler in {
             "file": resolve.component,
             "download": resolve.component_id,
@@ -144,7 +141,7 @@ class Piobot:
             for dependency in self.dependencies.copy():
                 try:
                     self._handle(dependency, handler(dependency))
-                except Exception as e:
+                except Exception as e:  # ruff:ignore[BLE001]
                     print(f"::warning Espressif Registry {description}::{e}")
             if len(self.dependencies) == 0:
                 break
@@ -155,7 +152,7 @@ class Piobot:
 
         Unresolved dependencies remain available for subsequent resolution methods. Exceptions from individual resolution attempts are reported as warnings.
         """
-        resolve = GitHub.Resolve(self.cooldown)
+        resolve = github.Resolve(self.cooldown)
         for description, handler in {
             "release tag commit archive": resolve.release_tag_commit_archive,
             "release tag commit ball": resolve.release_tag_commit_ball,
@@ -174,14 +171,14 @@ class Piobot:
             for dependency in self.dependencies.copy():
                 try:
                     self._handle(dependency, handler(dependency))
-                except Exception as e:
+                except Exception as e:  # ruff:ignore[BLE001]
                     print(f"::warning GitHub {description}::{e}")
             if len(self.dependencies) == 0:
                 break
 
     def gitlab(self) -> None:
         """Resolve dependencies using GitLab release and tag information."""
-        resolve = GitLab.Resolve(self.cooldown)
+        resolve = gitlab.Resolve(self.cooldown)
         for description, handler in {
             "release tag commit": resolve.release_tag_commit,
             "tag commit": resolve.tag_commit,
@@ -191,7 +188,7 @@ class Piobot:
             for dependency in self.dependencies.copy():
                 try:
                     self._handle(dependency, handler(dependency))
-                except Exception as e:
+                except Exception as e:  # ruff:ignore[BLE001]
                     print(f"::warning GitLab {description}::{e}")
             if len(self.dependencies) == 0:
                 break
@@ -202,7 +199,7 @@ class Piobot:
 
         Unresolved dependencies remain available for subsequent resolver methods, while resolution errors are reported as warnings.
         """
-        resolve = PlatformIO.Resolve(self.cooldown)
+        resolve = platformio.Resolve(self.cooldown)
         for description, handler in {
             "package": resolve.package,
             "download": resolve.download,
@@ -211,53 +208,53 @@ class Piobot:
             for dependency in self.dependencies.copy():
                 try:
                     self._handle(dependency, handler(dependency))
-                except Exception as e:
+                except Exception as e:  # ruff:ignore[BLE001]
                     print(f"::warning PlatformIO Registry {description}::{e}")
             if len(self.dependencies) == 0:
                 break
 
-    def _handle(self, dependency: Models.Dependency, result: Models.Result | str | None) -> None:
+    def _handle(self, dependency: models.Dependency, result: models.Result | str | None) -> None:
         """
-        Process a dependency resolution result and remove it once handled.
+        Process a dependency resolution result and mark the dependency as handled.
 
         Parameters:
-                dependency (Models.Dependency): The dependency associated with the result.
-                result (Models.Result | str | None): The resolved update, diagnostic message, or no result.
+            dependency (models.Dependency): The dependency associated with the result.
+            result (models.Result | str | None): An update result, diagnostic message, or no result.
         """
         if isinstance(result, str):
             print(f"::debug::{result}")
-        elif isinstance(result, Models.Result):
+        elif isinstance(result, models.Result):
             print(f"::notice file={self.ini},line={dependency.line},title=Update available::{result.value}")
             self._bump(dependency, result)
         else:
-            return None
+            return
         self.dependencies.remove(dependency)
 
-    def _bump(self, dependency: Models.Dependency, result: Models.Result) -> None:
+    def _bump(self, dependency: models.Dependency, result: models.Result) -> None:
         """
         Create and publish a dependency update branch and pull request.
 
         Parameters:
-            dependency (Models.Dependency): Dependency entry to update.
-            result (Models.Result): Update details, including package, versions, replacement value, and pull request body.
+            dependency (models.Dependency): Dependency entry to update.
+            result (models.Result): Update details, including package, versions, replacement value, and pull request body.
 
         The update is skipped when an equivalent branch or pull request already exists, or when the open pull request limit is reached. An older matching pull request is closed and its branch deleted when superseded.
         """
         head = f"dependabot/platformio/{'' if self.ini.parent == '.' else f'{re.sub(r"[^a-z0-9/]", "", str(self.ini.parent).lower())}/'}{result.package}-{result.version_to}"
         if head in self._git.heads:
-            return None
+            return
         repo = self._github.get_repo(self.repository)
         if repo.get_pulls(base=self.ref, head=f"{repo.owner.login}:{head}", state="all").totalCount > 0:
-            return None
-        open = repo.get_pulls(base=self.ref, state="open")
-        _pr = next((pr for pr in open if pr.head.ref.startswith(head.removesuffix(result.version_to))), None)
-        if _pr is None and sum(1 for pr in open if pr.head.ref.startswith("dependabot/platformio/")) >= int(
-            os.getenv(Models.Inputs.OPEN_PULL_REQUESTS_LIMIT, Models.Defaults.OPEN_PULL_REQUESTS_LIMIT)
+            return
+        pulls = repo.get_pulls(base=self.ref, state="open")
+        _pr = next((pr for pr in pulls if pr.head.ref.startswith(head.removesuffix(result.version_to))), None)
+        if _pr is None and sum(1 for pr in pulls if pr.head.ref.startswith("dependabot/platformio/")) >= int(
+            os.getenv(models.Inputs.OPEN_PULL_REQUESTS_LIMIT, models.Defaults.OPEN_PULL_REQUESTS_LIMIT)
         ):
-            return None
+            return
         self._git.head.set_reference(self._git.create_head(head, self.ref))
         self._git.head.reset(index=True, working_tree=True)
-        with fileinput.FileInput(self.ini, True) as file:
+        with fileinput.FileInput(self.ini, True, encoding="utf-8") as file:
             for line in file:
                 sys.stdout.write(line.replace(dependency.value, result.value))
         self._git.index.add(self.ini)
@@ -269,7 +266,7 @@ class Piobot:
             base=self.ref,
             body=result.body,
             head=head,
-            title=f"Bump {result.package} from {result.version_from} to {result.version_to}",
+            title=f"Bump {result.package} from {result.version_from} to {result.version_to}{'' if self.ini.parent == '.' else f' in /{self.ini.parent}'}",
         )
         for label in repo.get_labels():
             if label.name in self.labels:

@@ -1,11 +1,12 @@
 import datetime
-import packaging.version
 import re
-import requests
 import typing
 import urllib.parse
 
-from .. import Models
+import packaging.version
+import requests
+
+from .. import models
 
 
 class User(typing.TypedDict):
@@ -71,10 +72,10 @@ class Resolve:
 
     def __init__(self, cooldown: datetime.timedelta) -> None:
         """
-        Initialize a Bitbucket dependency URL resolver with the cooldown for newly created tags.
+        Initialize a Bitbucket dependency URL resolver with the minimum tag age required for eligibility.
 
         Parameters:
-            cooldown (datetime.timedelta): Minimum age required for a tag to be eligible.
+            cooldown (datetime.timedelta): Minimum age a tag must reach before it can be considered.
         """
         self.cooldown = cooldown
         self._name_commit = re.compile(
@@ -90,16 +91,16 @@ class Resolve:
             r"^(?:(?P<package>(?:[^/\s]+/)?[^/\s]+)?\s*@\s*)?https://bitbucket\.org/(?P<name>%7B[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}%7D/%7B[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}%7D)/get/(?P<tag>[^/\s]+)\.(?P<variant>tar\.gz|zip)(?:\s*;.*)?$"
         )
 
-    def name_commit(self, dependency: Models.Dependency) -> Models.Result | str | None:
+    def name_commit(self, dependency: models.Dependency) -> models.Result | str | None:
         """
         Resolve a Bitbucket dependency pinned to a commit and identify an eligible tag.
 
         Parameters:
-            dependency (Models.Dependency): Dependency specification containing the
+            dependency (models.Dependency): Dependency specification containing the
                 Bitbucket URL and version tag.
 
         Returns:
-            Models.Result: Upgrade details when a newer tag is available.
+            models.Result: Upgrade details when a newer tag is available.
             str: Updated dependency assignment when the selected tag is not newer.
             None: If the dependency does not match the expected format or no eligible
                 tag is found.
@@ -113,7 +114,7 @@ class Resolve:
             return None
         value = f"{'' if match['package'] is None else f'{match["package"]} @ '}{tag['target']['repository']['links']['html']['href']}/get/{tag['target']['hash']}.{match['variant']} ; {tag['name']}"
         return (
-            Models.Result(
+            models.Result(
                 body="\n".join(
                     [
                         f"Bumps [{tag['target']['repository']['full_name']}]({tag['target']['repository']['links']['html']['href']}) from {match['tag']} to {tag['name']}.",
@@ -130,15 +131,15 @@ class Resolve:
             else f"{dependency.option} = {value}"
         )
 
-    def name_tag(self, dependency: Models.Dependency) -> Models.Result | str | None:
+    def name_tag(self, dependency: models.Dependency) -> models.Result | str | None:
         """
         Resolve a named Bitbucket repository tag dependency to a newer tag when available.
 
         Parameters:
-            dependency (Models.Dependency): Dependency specification containing the repository name, current tag, package prefix, and archive variant.
+            dependency (models.Dependency): Dependency specification containing the repository name, current tag, package prefix, and archive variant.
 
         Returns:
-            Models.Result | str | None: A result describing a newer tag, the formatted dependency assignment when the tag is not newer, or `None` when the dependency does not match or no eligible tag is found.
+            models.Result | str | None: A result describing a newer tag, the formatted dependency assignment when the tag is not newer, or `None` when the dependency does not match or no eligible tag is found.
         """
         match = typing.cast(Tag | None, self._name_tag.fullmatch(dependency.value))
         if not match:
@@ -149,7 +150,7 @@ class Resolve:
             return None
         value = f"{'' if match['package'] is None else f'{match["package"]} @ '}{tag['target']['repository']['links']['html']['href']}/get/{tag['name']}.{match['variant']} ; {tag['name']}"
         return (
-            Models.Result(
+            models.Result(
                 body="\n".join(
                     [
                         f"Bumps [{tag['target']['repository']['full_name']}]({tag['target']['repository']['links']['html']['href']}) from {match['tag']} to {tag['name']}.",
@@ -166,15 +167,15 @@ class Resolve:
             else f"{dependency.option} = {value}"
         )
 
-    def uuid_commit(self, dependency: Models.Dependency) -> Models.Result | str | None:
+    def uuid_commit(self, dependency: models.Dependency) -> models.Result | str | None:
         """
         Create a dependency update result from a UUID-based Bitbucket commit reference.
 
         Parameters:
-            dependency (Models.Dependency): Dependency containing the Bitbucket reference to resolve.
+            dependency (models.Dependency): Dependency containing the Bitbucket reference to resolve.
 
         Returns:
-            Models.Result: Update metadata when a newer tag is available.
+            models.Result: Update metadata when a newer eligible tag is available.
             str: Rewritten dependency assignment when the resolved tag is not newer.
             None: If the dependency does not match the expected format or no eligible tag is found.
         """
@@ -187,7 +188,7 @@ class Resolve:
             return None
         value = f"{'' if match['package'] is None else f'{match["package"]} @ '}https://bitbucket.org/{urllib.parse.quote(tag['target']['author']['user']['uuid'])}/{urllib.parse.quote(tag['target']['repository']['uuid'])}/get/{tag['target']['hash']}.{match['variant']} ; {tag['target']['repository']['full_name']} {tag['name']}"
         return (
-            Models.Result(
+            models.Result(
                 body="\n".join(
                     [
                         f"Bumps [{tag['target']['repository']['full_name']}]({tag['target']['repository']['links']['html']['href']}) from {match['tag']} to {tag['name']}.",
@@ -204,17 +205,17 @@ class Resolve:
             else f"{dependency.option} = {value}"
         )
 
-    def uuid_tag(self, dependency: Models.Dependency) -> Models.Result | str | None:
+    def uuid_tag(self, dependency: models.Dependency) -> models.Result | str | None:
         """
-        Resolve a UUID-based Bitbucket tag dependency to an available update.
+        Resolve a UUID-based Bitbucket tag dependency to an eligible tag.
 
         Parameters:
-            dependency (Models.Dependency): Dependency specification containing the tag-based Bitbucket URL.
+            dependency (models.Dependency): Dependency specification containing the Bitbucket tag URL.
 
         Returns:
-            Models.Result: Update details when a newer tag is available.
-            str: Rewritten dependency assignment when the resolved tag is not newer.
-            None: If the dependency does not match the expected format or no eligible tag is found.
+            models.Result: Update details when a newer tag is available.
+            str: Rewritten dependency assignment when the eligible tag is not newer.
+            None: If the dependency format does not match or no eligible tag is found.
         """
         match = typing.cast(Tag | None, self._uuid_tag.fullmatch(dependency.value))
         if not match:
@@ -225,7 +226,7 @@ class Resolve:
             return None
         value = f"{'' if match['package'] is None else f'{match["package"]} @ '}https://bitbucket.org/{urllib.parse.quote(tag['target']['author']['user']['uuid'])}/{urllib.parse.quote(tag['target']['repository']['uuid'])}/get/{tag['name']}.{match['variant']} ; {tag['target']['repository']['full_name']} {tag['name']}"
         return (
-            Models.Result(
+            models.Result(
                 body="\n".join(
                     [
                         f"Bumps [{tag['target']['repository']['full_name']}]({tag['target']['repository']['links']['html']['href']}) from {match['tag']} to {tag['name']}.",
@@ -272,17 +273,29 @@ class Resolve:
                 except packaging.version.InvalidVersion:
                     print(f"::debug::Invalid version: {_value['target']['repository']['full_name']} {_value['name']}")
                     continue
-            url = response["next"] if "next" in response else None
+            url = response.get("next", None)
         return latest
 
     def _request(self, url: str) -> requests.Response:
+        """
+        Fetch a successful JSON response from a URL.
+
+        Parameters:
+            url (str): The URL to request.
+
+        Returns:
+            requests.Response: The successful HTTP response.
+
+        Raises:
+            requests.HTTPError: If the response has an unsuccessful status code.
+        """
         response = requests.get(
             url=url,
             headers={
                 "Accept": "application/json",
-                "User-Agent": Models.Config.USER_AGENT,
+                "User-Agent": models.Config.USER_AGENT,
             },
-            timeout=Models.Config.TIMEOUT,
+            timeout=models.Config.TIMEOUT,
         )
         response.raise_for_status()
         return response

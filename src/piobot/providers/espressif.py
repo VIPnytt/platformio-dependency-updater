@@ -1,10 +1,11 @@
 import datetime
-import packaging.version
 import re
-import requests
 import typing
 
-from .. import Models
+import packaging.version
+import requests
+
+from .. import models
 
 
 class Api(typing.TypedDict):
@@ -62,15 +63,15 @@ class Resolve:
         )
         self._disposition = re.compile(r"^\S+;\s?filename=(?P<namespace>\S+)__(?P<name>\S+)-v(?P<version>\S+)\.\S+$")
 
-    def component(self, dependency: Models.Dependency) -> Models.Result | str | None:
+    def component(self, dependency: models.Dependency) -> models.Result | str | None:
         """
         Resolve an Espressif component dependency and identify an available version update.
 
         Parameters:
-            dependency (Models.Dependency): Dependency declaration containing the component URL and assignment option.
+            dependency (models.Dependency): Dependency declaration containing the component URL and assignment option.
 
         Returns:
-            Models.Result: Update details when a newer compatible version is available.
+            models.Result: Update details when a newer compatible version is available.
             str: The dependency assignment with the selected version when no update is needed.
             None: If the dependency value is not a recognized component URL or no eligible version is found.
         """
@@ -86,7 +87,7 @@ class Resolve:
             f"{'' if match['package'] is None else f'{match["package"]} @ '}{_version['url']} ; {_version['version']}"
         )
         if packaging.version.Version(_version["version"]) > version:
-            return Models.Result(
+            return models.Result(
                 body="\n".join(
                     [
                         f"Bumps [{data['namespace']}/{data['name']}](https://components.espressif.com/components/{data['namespace']}/{data['name']}/versions/{_version['version']}) from {match['version']} to {_version['version']}.",
@@ -100,15 +101,15 @@ class Resolve:
             )
         return f"{dependency.option} = {value}"
 
-    def component_id(self, dependency: Models.Dependency) -> Models.Result | str | None:
+    def component_id(self, dependency: models.Dependency) -> models.Result | str | None:
         """
         Resolve an Espressif component API download dependency and identify an eligible newer version.
 
         Parameters:
-            dependency (Models.Dependency): Dependency containing the component download URL to resolve.
+            dependency (models.Dependency): Dependency containing the component download URL to resolve.
 
         Returns:
-            Models.Result | str | None: A bump result for a newer version, an updated dependency
+            models.Result | str | None: A bump result for a newer version, an updated dependency
             assignment when no bump is required, or `None` when the dependency format or component
             metadata cannot be resolved.
         """
@@ -125,7 +126,7 @@ class Resolve:
             return None
         value = f"{'' if match['package'] is None else f'{match["package"]} @ '}https://components.espressif.com/api/downloads/?object_type=component&object_id={_version['id']} ; {data['namespace']}/{data['name']} {_version['version']}"
         if packaging.version.Version(_version["version"]) > version:
-            return Models.Result(
+            return models.Result(
                 body="\n".join(
                     [
                         f"Bumps [{data['namespace']}/{data['name']}](https://components.espressif.com/components/{data['namespace']}/{data['name']}/versions/{_version['version']}) from {disposition['version']} to {_version['version']}.",
@@ -141,25 +142,24 @@ class Resolve:
 
     def _parse(self, data: Data, version: packaging.version.Version) -> Version | None:
         """
-        Select an eligible component version based on the target version and cooldown period.
+        Select an eligible component version relative to the current version.
 
         Parameters:
             data (Data): Component metadata containing candidate versions.
-            version (packaging.version.Version): Current component version used for comparison.
+            version (packaging.version.Version): Current version used as the comparison baseline.
 
         Returns:
-            Version | None: The first eligible version newer than the target, or the first eligible version at or below the target when no newer version qualifies; `None` if no candidate qualifies.
+            Version | None: The first eligible version newer than the baseline, or the first eligible version at or below it when no newer version qualifies; `None` if no candidate qualifies.
         """
         latest = None
         for _candidate in typing.cast(list[Version], data["versions"]):
             try:
                 _version = packaging.version.Version(_candidate["version"])
+                _timestamp = datetime.datetime.fromisoformat(_candidate["created_at"])
                 if (
                     _candidate["yanked_at"] is not None
                     or (_version.is_prerelease and not version.is_prerelease)
-                    or datetime.datetime.now(datetime.timezone.utc)
-                    - datetime.datetime.fromisoformat(_candidate["created_at"])
-                    < self.cooldown
+                    or datetime.datetime.now(_timestamp.tzinfo) - _timestamp < self.cooldown
                 ):
                     continue
                 elif _version > version:
@@ -172,7 +172,8 @@ class Resolve:
         return latest
 
     def _request_component(self, namespace: str, name: str) -> Data:
-        """Fetch component metadata from the Espressif Components API.
+        """
+        Fetch component metadata from the Espressif Components API.
 
         Parameters:
             namespace (str): Component namespace.
@@ -185,9 +186,9 @@ class Resolve:
             url=f"https://components.espressif.com/api/components/{namespace}/{name}",
             headers={
                 "Accept": "application/json",
-                "User-Agent": Models.Config.USER_AGENT,
+                "User-Agent": models.Config.USER_AGENT,
             },
-            timeout=Models.Config.TIMEOUT,
+            timeout=models.Config.TIMEOUT,
         )
         response.raise_for_status()
         return typing.cast(Data, response.json())
@@ -204,8 +205,8 @@ class Resolve:
         """
         response = requests.head(
             url=f"https://components.espressif.com/api/downloads/?object_type=component&object_id={id}",
-            headers={"User-Agent": Models.Config.USER_AGENT},
-            timeout=Models.Config.TIMEOUT,
+            headers={"User-Agent": models.Config.USER_AGENT},
+            timeout=models.Config.TIMEOUT,
         )
         response.raise_for_status()
         return typing.cast(Disposition | None, self._disposition.fullmatch(response.headers["Content-Disposition"]))
