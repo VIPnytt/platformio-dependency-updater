@@ -257,11 +257,9 @@ class Piobot:
             return None
         self._git.head.set_reference(self._git.create_head(head, self.ref))
         self._git.head.reset(index=True, working_tree=True)
-        i = 0
         with fileinput.FileInput(self.ini, True) as file:
             for line in file:
-                i += 1
-                sys.stdout.write(line.replace(dependency.value, result.value) if i == dependency.line else line)
+                sys.stdout.write(line.replace(dependency.value, result.value))
         self._git.index.add(self.ini)
         self._git.index.commit(
             f"Bump {result.package} from {result.version_from} to {result.version_to} in /{'' if self.ini.parent == '.' else self.ini.parent}"
