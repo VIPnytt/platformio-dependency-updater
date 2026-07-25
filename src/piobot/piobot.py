@@ -245,9 +245,9 @@ class Piobot:
         repo = self._github.get_repo(self.repository)
         if repo.get_pulls(base=self.ref, head=f"{repo.owner.login}:{head}", state="all").totalCount > 0:
             return
-        open = repo.get_pulls(base=self.ref, state="open")
-        _pr = next((pr for pr in open if pr.head.ref.startswith(head.removesuffix(result.version_to))), None)
-        if _pr is None and sum(1 for pr in open if pr.head.ref.startswith("dependabot/platformio/")) >= int(
+        pulls = repo.get_pulls(base=self.ref, state="open")
+        _pr = next((pr for pr in pulls if pr.head.ref.startswith(head.removesuffix(result.version_to))), None)
+        if _pr is None and sum(1 for pr in pulls if pr.head.ref.startswith("dependabot/platformio/")) >= int(
             os.getenv(models.Inputs.OPEN_PULL_REQUESTS_LIMIT, models.Defaults.OPEN_PULL_REQUESTS_LIMIT)
         ):
             return
