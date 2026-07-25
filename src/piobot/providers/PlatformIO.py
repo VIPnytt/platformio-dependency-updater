@@ -1,11 +1,12 @@
 import datetime
 import enum
-import packaging.version
 import re
-import requests
 import typing
 
-from .. import Models
+import packaging.version
+import requests
+
+from .. import models
 
 
 class File(typing.TypedDict):
@@ -76,15 +77,15 @@ class Resolve:
             r"^(?:(?P<owner>[^/\s]+)/)?(?P<name>[^/\s]+?)\s*@\s*(?P<version>[^\s]+)\S*(?:\s*;.*)?$"
         )
 
-    def api(self, dependency: Models.Dependency) -> Models.Result | str | None:
+    def api(self, dependency: models.Dependency) -> models.Result | str | None:
         """
         Resolve a PlatformIO API download URL to an available package update.
 
         Parameters:
-                dependency (Models.Dependency): Dependency containing the API download URL to resolve.
+                dependency (models.Dependency): Dependency containing the API download URL to resolve.
 
         Returns:
-                Models.Result | str | None: An update result or dependency assignment when a matching file is found; otherwise, None.
+                models.Result | str | None: An update result or dependency assignment when a matching file is found; otherwise, None.
         """
         match = typing.cast(Download | None, self._api.fullmatch(dependency.value))
         if not match:
@@ -101,7 +102,7 @@ class Resolve:
             value = f"{'' if match['package'] is None else f'{match["package"]} @ '}{file['download_url']} ; {_version['name']}"
             if packaging.version.Version(_version["name"]) > version:
                 type = self._type_html(data["type"])
-                return Models.Result(
+                return models.Result(
                     body="\n".join(
                         [
                             f"Bumps [{data['owner']['username']}/{data['name']}](https://registry.platformio.org/{type}/{data['owner']['username']}/{data['name']}) from {match['version']} to {_version['name']}.",
@@ -116,15 +117,15 @@ class Resolve:
             return f"{dependency.option} = {value}"
         return None
 
-    def download(self, dependency: Models.Dependency) -> Models.Result | str | None:
+    def download(self, dependency: models.Dependency) -> models.Result | str | None:
         """
         Resolve a PlatformIO download URL dependency to an available package version.
 
         Parameters:
-            dependency (Models.Dependency): Dependency containing the download URL and update option.
+            dependency (models.Dependency): Dependency containing the download URL and update option.
 
         Returns:
-            Models.Result | str | None: An update result or assignment when a matching file is found; otherwise, None.
+            models.Result | str | None: An update result or assignment when a matching file is found; otherwise, None.
         """
         match = typing.cast(Download | None, self._download.fullmatch(dependency.value))
         if not match:
@@ -141,7 +142,7 @@ class Resolve:
             value = f"{'' if match['package'] is None else f'{match["package"]} @ '}{file['download_url']} ; {_version['name']}"
             if packaging.version.Version(_version["name"]) > version:
                 type = self._type_html(data["type"])
-                return Models.Result(
+                return models.Result(
                     body="\n".join(
                         [
                             f"Bumps [{data['owner']['username']}/{data['name']}](https://registry.platformio.org/{type}/{data['owner']['username']}/{data['name']}) from {match['version']} to {_version['name']}.",
@@ -156,15 +157,15 @@ class Resolve:
             return f"{dependency.option} = {value}"
         return None
 
-    def package(self, dependency: Models.Dependency) -> Models.Result | str | None:
+    def package(self, dependency: models.Dependency) -> models.Result | str | None:
         """
         Resolve a package reference and produce an update result or assignment.
 
         Parameters:
-            dependency (Models.Dependency): Dependency option and package reference to resolve.
+            dependency (models.Dependency): Dependency option and package reference to resolve.
 
         Returns:
-            Models.Result: Update information when a newer eligible version is available.
+            models.Result: Update information when a newer eligible version is available.
             str: Assignment using the resolved package version when no update is needed.
             None: If the dependency reference does not match or no eligible version is found.
         """
@@ -181,7 +182,7 @@ class Resolve:
         value = f"{data['owner']['username']}/{data['name']} @ {_version['name']}"
         if packaging.version.Version(_version["name"]) > version:
             type = self._type_html(data["type"])
-            return Models.Result(
+            return models.Result(
                 body="\n".join(
                     [
                         f"Bumps [{data['owner']['username']}/{data['name']}](https://registry.platformio.org/{type}/{data['owner']['username']}/{data['name']}) from {match['version']} to {_version['name']}.",
@@ -210,10 +211,11 @@ class Resolve:
         latest = None
         for _candidate in typing.cast(list[Version], data["versions"]):
             try:
+                _timestamp = datetime.datetime.fromisoformat(_candidate["released_at"])
                 _version = packaging.version.Version(_candidate["name"])
                 if (_version.is_prerelease and not version.is_prerelease) or datetime.datetime.now(
-                    datetime.timezone.utc
-                ) - datetime.datetime.fromisoformat(_candidate["released_at"].replace("Z", "+00:00")) < self.cooldown:
+                    _timestamp.tzinfo
+                ) - _timestamp < self.cooldown:
                     continue
                 elif _version > version:
                     return _candidate
@@ -268,9 +270,9 @@ class Resolve:
             url=url,
             headers={
                 "Accept": "application/json",
-                "User-Agent": Models.Config.USER_AGENT,
+                "User-Agent": models.Config.USER_AGENT,
             },
-            timeout=Models.Config.TIMEOUT,
+            timeout=models.Config.TIMEOUT,
         )
         response.raise_for_status()
         return response
@@ -281,12 +283,12 @@ class Resolve:
                 return _file["system"]
         return "*"
 
-    def _type_api(self, option: Models.Option | str) -> Type | str:
-        if option == Models.Option.LIB_DEPS:
+    def _type_api(self, option: models.Option | str) -> Type | str:
+        if option == models.Option.LIB_DEPS:
             return Type.LIBRARY
-        elif option == Models.Option.PLATFORM:
+        elif option == models.Option.PLATFORM:
             return Type.PLATFORM
-        elif option == Models.Option.PLATFORM_PACKAGES:
+        elif option == models.Option.PLATFORM_PACKAGES:
             return Type.TOOL
         else:
             return option

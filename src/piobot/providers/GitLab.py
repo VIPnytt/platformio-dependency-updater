@@ -1,10 +1,11 @@
 import datetime
-import packaging.version
 import re
-import requests
 import typing
 
-from .. import Models
+import packaging.version
+import requests
+
+from .. import models
 
 
 class Commit(typing.TypedDict):
@@ -77,15 +78,15 @@ class Resolve:
             r"^(?:(?P<package>(?:[^/\s]+/)?[^/\s]+)?\s*@\s*)?https://gitlab\.com/(?P<owner>[^/\s]+)/(?P<repo>[^/\s]+)/-/archive/(?P<tag>[^/\s]+)/[^/\s]+\.(?P<variant>tar|tar\.gz|zip)(?:\s*;.*)?$"
         )
 
-    def release_tag(self, dependency: Models.Dependency) -> Models.Result | str | None:
+    def release_tag(self, dependency: models.Dependency) -> models.Result | str | None:
         """
         Resolve a tag-based GitLab dependency to the latest eligible release asset.
 
         Parameters:
-                dependency (Models.Dependency): Dependency expression containing a GitLab tag archive URL.
+                dependency (models.Dependency): Dependency expression containing a GitLab tag archive URL.
 
         Returns:
-                Models.Result | str | None: An update result or assignment string when a matching release asset is found; otherwise, `None`.
+                models.Result | str | None: An update result or assignment string when a matching release asset is found; otherwise, `None`.
         """
         match = typing.cast(MatchTag | None, self._tag.fullmatch(dependency.value))
         if not match:
@@ -102,7 +103,7 @@ class Resolve:
                 f"{'' if match['package'] is None else f'{match["package"]} @ '}{source['url']} ; {release['tag_name']}"
             )
             return (
-                Models.Result(
+                models.Result(
                     body="\n".join(
                         [
                             f"Bumps [{owner}/{repo}](https://gitlab.com/{owner}/{repo}) from {match['tag']} to {release['tag_name']}.",
@@ -120,15 +121,15 @@ class Resolve:
             )
         return None
 
-    def release_tag_commit(self, dependency: Models.Dependency) -> Models.Result | str | None:
+    def release_tag_commit(self, dependency: models.Dependency) -> models.Result | str | None:
         """
         Resolve a commit-archive dependency to the next matching GitLab release.
 
         Parameters:
-                dependency (Models.Dependency): Dependency whose commit-archive value is resolved.
+                dependency (models.Dependency): Dependency whose commit-archive value is resolved.
 
         Returns:
-                Models.Result | str | None: An update result or assignment string when a matching release asset is found; otherwise, None.
+                models.Result | str | None: An update result or assignment string when a matching release asset is found; otherwise, None.
         """
         match = typing.cast(MatchCommit | None, self._commit.fullmatch(dependency.value))
         if not match:
@@ -143,7 +144,7 @@ class Resolve:
                 continue
             value = f"{'' if match['package'] is None else f'{match["package"]} @ '}https://gitlab.com/{owner}/{repo}/-/archive/{release['commit']['id']}/{repo}-{release['commit']['id']}.{match['variant']} ; {release['tag_name']}"
             return (
-                Models.Result(
+                models.Result(
                     body="\n".join(
                         [
                             f"Bumps [{owner}/{repo}](https://gitlab.com/{owner}/{repo}) from {match['tag']} to {release['tag_name']}.",
@@ -161,15 +162,15 @@ class Resolve:
             )
         return None
 
-    def tag(self, dependency: Models.Dependency) -> Models.Result | str | None:
+    def tag(self, dependency: models.Dependency) -> models.Result | str | None:
         """
         Resolve a tag-based GitLab dependency to the latest available tag archive.
 
         Parameters:
-                dependency (Models.Dependency): Dependency expression containing a GitLab tag archive reference.
+                dependency (models.Dependency): Dependency expression containing a GitLab tag archive reference.
 
         Returns:
-                Models.Result: Updated dependency metadata when a newer tag is available.
+                models.Result: Updated dependency metadata when a newer tag is available.
                 str: Dependency assignment using the resolved tag when no newer tag is available.
                 None: If the dependency does not match the expected format or no matching tag is found.
         """
@@ -183,7 +184,7 @@ class Resolve:
         owner, repo = self._parse_link(tag["commit"]["web_url"])
         value = f"{'' if match['package'] is None else f'{match["package"]} @ '}https://gitlab.com/{owner}/{repo}/-/archive/{tag['name']}/{repo}-{tag['name']}.{match['variant']} ; {tag['name']}"
         return (
-            Models.Result(
+            models.Result(
                 body="\n".join(
                     [
                         f"Bumps [{owner}/{repo}](https://gitlab.com/{owner}/{repo}) from {match['tag']} to {tag['name']}.",
@@ -200,14 +201,14 @@ class Resolve:
             else f"{dependency.option} = {value}"
         )
 
-    def tag_commit(self, dependency: Models.Dependency) -> Models.Result | str | None:
+    def tag_commit(self, dependency: models.Dependency) -> models.Result | str | None:
         """Resolve a commit archive dependency to the latest eligible GitLab tag.
 
         Parameters:
-            dependency (Models.Dependency): Dependency expression containing a commit archive URL and version tag.
+            dependency (models.Dependency): Dependency expression containing a commit archive URL and version tag.
 
         Returns:
-            Models.Result: Updated dependency details when a newer tag is available.
+            models.Result: Updated dependency details when a newer tag is available.
             str: Assignment string when the resolved tag is not newer.
             None: If the dependency does not match or no eligible tag is found.
         """
@@ -221,7 +222,7 @@ class Resolve:
         owner, repo = self._parse_link(tag["commit"]["web_url"])
         value = f"{'' if match['package'] is None else f'{match["package"]} @ '}https://gitlab.com/{owner}/{repo}/-/archive/{tag['commit']['id']}/{repo}-{tag['commit']['id']}.{match['variant']} ; {tag['name']}"
         return (
-            Models.Result(
+            models.Result(
                 body="\n".join(
                     [
                         f"Bumps [{owner}/{repo}](https://gitlab.com/{owner}/{repo}) from {match['tag']} to {tag['name']}.",
@@ -269,14 +270,13 @@ class Resolve:
             for _release in typing.cast(list[Release], response.json()):
                 try:
                     _version = packaging.version.Version(_release["tag_name"])
-                    _created_at = _release["created_at"]
-                    _released_at = _release.get("released_at") or _created_at
+                    _timestamp = max(
+                        datetime.datetime.fromisoformat(_release["created_at"]),
+                        datetime.datetime.fromisoformat(_release.get("released_at") or _release["created_at"]),
+                    )
                     if (_version.is_prerelease and not version.is_prerelease) or datetime.datetime.now(
-                        datetime.timezone.utc
-                    ) - max(
-                        datetime.datetime.fromisoformat(_created_at.replace("Z", "+00:00")),
-                        datetime.datetime.fromisoformat(_released_at.replace("Z", "+00:00")),
-                    ) < self.cooldown:
+                        _timestamp.tzinfo
+                    ) - _timestamp < self.cooldown:
                         continue
                     elif _version > version:
                         return _release
@@ -329,9 +329,9 @@ class Resolve:
             url=url,
             headers={
                 "Accept": "application/json",
-                "User-Agent": Models.Config.USER_AGENT,
+                "User-Agent": models.Config.USER_AGENT,
             },
-            timeout=Models.Config.TIMEOUT,
+            timeout=models.Config.TIMEOUT,
         )
         response.raise_for_status()
         return response

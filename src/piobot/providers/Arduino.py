@@ -1,9 +1,10 @@
-import packaging.version
 import re
-import requests
 import typing
 
-from .. import Models
+import packaging.version
+import requests
+
+from .. import models
 
 
 class Library(typing.TypedDict):
@@ -36,16 +37,16 @@ class Resolve:
                 "https://downloads.arduino.cc/libraries/library_index.json",
                 headers={
                     "Accept": "application/json",
-                    "User-Agent": Models.Config.USER_AGENT,
+                    "User-Agent": models.Config.USER_AGENT,
                 },
-                timeout=Models.Config.TIMEOUT,
+                timeout=models.Config.TIMEOUT,
             )
             response.raise_for_status()
             self._data = typing.cast(Data, response.json())
-        except Exception:
+        except requests.exceptions.RequestException:
             self._data = typing.cast(Data, {"libraries": []})
 
-    def library(self, dependency: Models.Dependency) -> Models.Result | str | None:
+    def library(self, dependency: models.Dependency) -> models.Result | str | None:
         match = typing.cast(Match | None, self._libraries.fullmatch(dependency.value))
         if not match:
             return None
@@ -55,7 +56,7 @@ class Resolve:
             return None
         value = f"{'' if match['package'] is None else f'{match["package"]} @ '}{library['url']} ; {library['version']}"
         return (
-            Models.Result(
+            models.Result(
                 body=f"Bumps [{library['name']}]({library['website']}) from {match['version']} to {library['version']}.",
                 package=library["name"],
                 value=value,

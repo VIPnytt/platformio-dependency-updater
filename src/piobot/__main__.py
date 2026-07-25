@@ -1,3 +1,3 @@
-from .Piobot import Piobot
+from .piobot import Piobot
 
 Piobot().check()
