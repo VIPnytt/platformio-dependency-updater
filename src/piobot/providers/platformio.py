@@ -119,13 +119,13 @@ class Resolve:
 
     def download(self, dependency: models.Dependency) -> models.Result | str | None:
         """
-        Resolve a PlatformIO download URL dependency to an available package version.
-
+        Resolve a PlatformIO direct download URL to an eligible package version.
+        
         Parameters:
-            dependency (models.Dependency): Dependency containing the download URL and update option.
-
+            dependency (models.Dependency): Dependency containing the direct download URL and update option.
+        
         Returns:
-            models.Result | str | None: An update result or assignment when a matching file is found; otherwise, None.
+            models.Result | str | None: An update result for a newer version, an assignment string for the selected version, or `None` if the URL or matching file cannot be resolved.
         """
         match = typing.cast(Download | None, self._download.fullmatch(dependency.value))
         if not match:
@@ -266,6 +266,18 @@ class Resolve:
         )
 
     def _request(self, url: str) -> requests.Response:
+        """
+        Fetch a PlatformIO registry resource.
+        
+        Parameters:
+        	url (str): The resource URL to request.
+        
+        Returns:
+        	requests.Response: The successful HTTP response.
+        
+        Raises:
+        	requests.HTTPError: If the response indicates an HTTP error.
+        """
         response = requests.get(
             url=url,
             headers={
@@ -278,12 +290,22 @@ class Resolve:
         return response
 
     def _system(self, files: list[File], file: str) -> str:
+        """Find the system associated with a file name.
+        
+        Parameters:
+        	files (list[File]): Available package files.
+        	file (str): File name to look up.
+        
+        Returns:
+        	str: The matching system, or "*" when no matching file is found.
+        """
         for _file in files:
             if _file["name"] == file:
                 return _file["system"]
         return "*"
 
     def _type_api(self, option: models.Option | str) -> Type | str:
+        """Map dependency options to their PlatformIO registry category."""
         if option == models.Option.LIB_DEPS:
             return Type.LIBRARY
         elif option == models.Option.PLATFORM:

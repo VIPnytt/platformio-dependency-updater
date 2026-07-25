@@ -142,14 +142,14 @@ class Resolve:
 
     def _parse(self, data: Data, version: packaging.version.Version) -> Version | None:
         """
-        Select an eligible component version based on the target version and cooldown period.
-
+        Select an eligible component version relative to the current version.
+        
         Parameters:
             data (Data): Component metadata containing candidate versions.
-            version (packaging.version.Version): Current component version used for comparison.
-
+            version (packaging.version.Version): Current version used as the comparison baseline.
+        
         Returns:
-            Version | None: The first eligible version newer than the target, or the first eligible version at or below the target when no newer version qualifies; `None` if no candidate qualifies.
+            Version | None: The first eligible version newer than the baseline, or the first eligible version at or below it when no newer version qualifies; `None` if no candidate qualifies.
         """
         latest = None
         for _candidate in typing.cast(list[Version], data["versions"]):

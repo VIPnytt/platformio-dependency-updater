@@ -72,10 +72,10 @@ class Resolve:
 
     def __init__(self, cooldown: datetime.timedelta) -> None:
         """
-        Initialize a Bitbucket dependency URL resolver with the cooldown for newly created tags.
-
+        Initialize a Bitbucket dependency URL resolver with the minimum tag age required for eligibility.
+        
         Parameters:
-            cooldown (datetime.timedelta): Minimum age required for a tag to be eligible.
+            cooldown (datetime.timedelta): Minimum age a tag must reach before it can be considered.
         """
         self.cooldown = cooldown
         self._name_commit = re.compile(
@@ -170,12 +170,12 @@ class Resolve:
     def uuid_commit(self, dependency: models.Dependency) -> models.Result | str | None:
         """
         Create a dependency update result from a UUID-based Bitbucket commit reference.
-
+        
         Parameters:
             dependency (models.Dependency): Dependency containing the Bitbucket reference to resolve.
-
+        
         Returns:
-            models.Result: Update metadata when a newer tag is available.
+            models.Result: Update metadata when a newer eligible tag is available.
             str: Rewritten dependency assignment when the resolved tag is not newer.
             None: If the dependency does not match the expected format or no eligible tag is found.
         """
@@ -207,15 +207,15 @@ class Resolve:
 
     def uuid_tag(self, dependency: models.Dependency) -> models.Result | str | None:
         """
-        Resolve a UUID-based Bitbucket tag dependency to an available update.
-
+        Resolve a UUID-based Bitbucket tag dependency to an eligible tag.
+        
         Parameters:
-            dependency (models.Dependency): Dependency specification containing the tag-based Bitbucket URL.
-
+            dependency (models.Dependency): Dependency specification containing the Bitbucket tag URL.
+        
         Returns:
             models.Result: Update details when a newer tag is available.
-            str: Rewritten dependency assignment when the resolved tag is not newer.
-            None: If the dependency does not match the expected format or no eligible tag is found.
+            str: Rewritten dependency assignment when the eligible tag is not newer.
+            None: If the dependency format does not match or no eligible tag is found.
         """
         match = typing.cast(Tag | None, self._uuid_tag.fullmatch(dependency.value))
         if not match:
@@ -277,6 +277,18 @@ class Resolve:
         return latest
 
     def _request(self, url: str) -> requests.Response:
+        """
+        Fetch a successful JSON response from a URL.
+        
+        Parameters:
+        	url (str): The URL to request.
+        
+        Returns:
+        	requests.Response: The successful HTTP response.
+        
+        Raises:
+        	requests.HTTPError: If the response has an unsuccessful status code.
+        """
         response = requests.get(
             url=url,
             headers={

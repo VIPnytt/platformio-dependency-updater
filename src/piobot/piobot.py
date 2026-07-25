@@ -103,6 +103,7 @@ class Piobot:
                 break
 
     def arduino(self) -> None:
+        """Resolve Arduino library dependencies and handle available updates."""
         resolve = arduino.Resolve()
         for dependency in self.dependencies.copy():
             try:
@@ -214,11 +215,12 @@ class Piobot:
 
     def _handle(self, dependency: models.Dependency, result: models.Result | str | None) -> None:
         """
-        Process a dependency resolution result and remove it once handled.
-
+        Process a dependency resolution result and mark the dependency as handled.
+        
         Parameters:
-                dependency (models.Dependency): The dependency associated with the result.
-                result (models.Result | str | None): The resolved update, diagnostic message, or no result.
+        	dependency (models.Dependency): The dependency associated with the result.
+        	result (models.Result | str | None): An update result, diagnostic message, or no result.
+        
         """
         if isinstance(result, str):
             print(f"::debug::{result}")

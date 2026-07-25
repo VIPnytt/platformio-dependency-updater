@@ -29,6 +29,10 @@ class Resolve:
     _libraries: re.Pattern[str]
 
     def __init__(self) -> None:
+        """Initialize the resolver and load the Arduino library index.
+        
+        If the library index cannot be fetched, initialize with an empty library list.
+        """
         self._libraries = re.compile(
             r"^(?:(?P<package>(?:[^/\s]+/)?[^/\s]+)?\s*@\s*)?https://downloads\.arduino\.cc/libraries/(?:[^\s]+)/(?P<name>[^/\s]+)-(?P<version>[^/\s]+)\.zip(?:\s*;.*)?$"
         )
@@ -47,6 +51,17 @@ class Resolve:
             self._data = typing.cast(Data, {"libraries": []})
 
     def library(self, dependency: models.Dependency) -> models.Result | str | None:
+        """
+        Resolve an Arduino library dependency to its latest eligible version.
+        
+        Parameters:
+            dependency (models.Dependency): Dependency declaration containing the requested library version and option.
+        
+        Returns:
+            models.Result: Upgrade details when a newer library version is available.
+            str: The dependency assignment when the requested version is current.
+            None: If the dependency does not match the expected format or no library is found.
+        """
         match = typing.cast(Match | None, self._libraries.fullmatch(dependency.value))
         if not match:
             return None
