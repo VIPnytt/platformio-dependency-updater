@@ -72,13 +72,13 @@ class Resolve:
 
     def api(self, dependency: models.Dependency) -> models.Result | str | None:
         """
-        Resolve a PlatformIO API download URL to an available package update.
-
+        Resolve a PlatformIO API download URL to an updated package reference or assignment.
+        
         Parameters:
-                dependency (models.Dependency): Dependency containing the API download URL to resolve.
-
+        	dependency (models.Dependency): Dependency containing the API download URL.
+        
         Returns:
-                models.Result | str | None: An update result or dependency assignment when a matching file is found; otherwise, None.
+        	models.Result | str | None: An update result when a newer eligible version is found, an assignment string when the current version is selected, or None when the URL or package cannot be resolved.
         """
         match = typing.cast(Download | None, self._api.fullmatch(dependency.value))
         if not match:
@@ -298,7 +298,12 @@ class Resolve:
         return "*"
 
     def _type_api(self, option: models.Option | str) -> str:
-        """Map dependency options to their PlatformIO registry category."""
+        """
+        Map a dependency option to its PlatformIO registry category.
+        
+        Returns:
+            str: The mapped category, or the option value when no mapping exists.
+        """
         return {
             models.Option.LIB_DEPS.value: "library",
             models.Option.PLATFORM.value: "platform",
@@ -306,6 +311,14 @@ class Resolve:
         }.get(str(option), str(option))
 
     def _type_html(self, type_: str) -> str:
+        """Map a PlatformIO registry type to its plural URL path segment.
+        
+        Parameters:
+        	type_ (str): Registry type to convert.
+        
+        Returns:
+        	str: The plural URL path segment, or `type_` when no mapping exists.
+        """
         return {
             "library": "libraries",
             "platform": "platforms",
