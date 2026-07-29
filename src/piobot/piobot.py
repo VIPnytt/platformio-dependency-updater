@@ -215,7 +215,7 @@ class Piobot:
 
     def _handle(self, dependency: models.Dependency, result: models.Result | str | None) -> None:
         """
-        Process a dependency resolution result and mark the dependency as handled.
+        Process a dependency resolution result and remove handled dependencies from tracking.
 
         Parameters:
             dependency (models.Dependency): The dependency associated with the result.
