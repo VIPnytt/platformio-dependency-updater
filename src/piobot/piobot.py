@@ -224,7 +224,7 @@ class Piobot:
         if isinstance(result, str):
             print(f"::debug::{result}")
         elif isinstance(result, models.Result):
-            print(f"::notice file={self.ini},line={dependency.line},title=Update available::{result.value}")
+            print(f"::notice file={self.ini!s},line={dependency.line},title=Update available::{result.value}")
             self._bump(dependency, result)
         else:
             return
@@ -240,7 +240,7 @@ class Piobot:
 
         The update is skipped when an equivalent branch or pull request already exists, or when the open pull request limit is reached. An older matching pull request is closed and its branch deleted when superseded.
         """
-        head = f"dependabot/platformio/{'' if self.ini.parent == '.' else f'{re.sub(r"[^a-z0-9/]", "", str(self.ini.parent).lower())}/'}{result.package}-{result.version_to}"
+        head = f"dependabot/platformio/{'' if str(self.ini.parent) == '.' else f'{re.sub(r"[^a-z0-9/]", "", str(self.ini.parent).lower())}/'}{result.package}-{result.version_to}"
         if head in self._git.heads:
             return
         repo = self._github.get_repo(self.repository)
@@ -259,14 +259,14 @@ class Piobot:
                 sys.stdout.write(line.replace(dependency.value, result.value))
         self._git.index.add(self.ini)
         self._git.index.commit(
-            f"Bump {result.package} from {result.version_from} to {result.version_to} in /{'' if self.ini.parent == '.' else self.ini.parent}"
+            f"Bump {result.package} from {result.version_from} to {result.version_to} in /{'' if str(self.ini.parent) == '.' else self.ini.parent!s}"
         )
         self._git.remote().push(head).raise_if_error()
         pr = repo.create_pull(
             base=self.ref,
             body=result.body,
             head=head,
-            title=f"Bump {result.package} from {result.version_from} to {result.version_to}{'' if self.ini.parent == '.' else f' in /{self.ini.parent}'}",
+            title=f"Bump {result.package} from {result.version_from} to {result.version_to}{'' if str(self.ini.parent) == '.' else f' in /{self.ini.parent!s}'}",
         )
         for label in repo.get_labels():
             if label.name in self.labels:
@@ -280,5 +280,5 @@ class Piobot:
         """Report unresolved dependencies using GitHub Actions error annotations."""
         for dependency in self.dependencies:
             print(
-                f"::error file={self.ini},line={dependency.line},title=Unresolved::{dependency.option} = {dependency.value.split(';', 1)[0].rstrip()}"
+                f"::error file={self.ini!s},line={dependency.line},title=Unresolved::{dependency.option} = {dependency.value.split(';', 1)[0].rstrip()}"
             )

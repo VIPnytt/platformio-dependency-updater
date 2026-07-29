@@ -1,5 +1,4 @@
 import datetime
-import enum
 import re
 import typing
 
@@ -28,7 +27,7 @@ class Version(typing.TypedDict):
 class Data(typing.TypedDict):
     name: str
     owner: Owner
-    type: str
+    type_: str
     version: Version
     versions: list[Version]
 
@@ -45,12 +44,6 @@ class Package(typing.TypedDict):
     name: str
     owner: str | None
     version: str
-
-
-class Type(enum.StrEnum):
-    LIBRARY = "library"
-    PLATFORM = "platform"
-    TOOL = "tool"
 
 
 class Resolve:
@@ -101,12 +94,12 @@ class Resolve:
                 continue
             value = f"{'' if match['package'] is None else f'{match["package"]} @ '}{file['download_url']} ; {_version['name']}"
             if packaging.version.Version(_version["name"]) > version:
-                type = self._type_html(data["type"])
+                type_ = self._type_html(data["type_"])
                 return models.Result(
                     body="\n".join(
                         [
-                            f"Bumps [{data['owner']['username']}/{data['name']}](https://registry.platformio.org/{type}/{data['owner']['username']}/{data['name']}) from {match['version']} to {_version['name']}.",
-                            f"- [Versions](https://registry.platformio.org/{type}/{data['owner']['username']}/{data['name']}/versions?version={_version['name']})",
+                            f"Bumps [{data['owner']['username']}/{data['name']}](https://registry.platformio.org/{type_}/{data['owner']['username']}/{data['name']}) from {match['version']} to {_version['name']}.",
+                            f"- [Versions](https://registry.platformio.org/{type_}/{data['owner']['username']}/{data['name']}/versions?version={_version['name']})",
                         ]
                     ),
                     package=f"{data['owner']['username']}/{data['name']}",
@@ -141,12 +134,12 @@ class Resolve:
                 continue
             value = f"{'' if match['package'] is None else f'{match["package"]} @ '}{file['download_url']} ; {_version['name']}"
             if packaging.version.Version(_version["name"]) > version:
-                type = self._type_html(data["type"])
+                type_ = self._type_html(data["type_"])
                 return models.Result(
                     body="\n".join(
                         [
-                            f"Bumps [{data['owner']['username']}/{data['name']}](https://registry.platformio.org/{type}/{data['owner']['username']}/{data['name']}) from {match['version']} to {_version['name']}.",
-                            f"- [Versions](https://registry.platformio.org/{type}/{data['owner']['username']}/{data['name']}/versions?version={_version['name']})",
+                            f"Bumps [{data['owner']['username']}/{data['name']}](https://registry.platformio.org/{type_}/{data['owner']['username']}/{data['name']}) from {match['version']} to {_version['name']}.",
+                            f"- [Versions](https://registry.platformio.org/{type_}/{data['owner']['username']}/{data['name']}/versions?version={_version['name']})",
                         ]
                     ),
                     package=f"{data['owner']['username']}/{data['name']}",
@@ -181,12 +174,12 @@ class Resolve:
             return None
         value = f"{data['owner']['username']}/{data['name']} @ {_version['name']}"
         if packaging.version.Version(_version["name"]) > version:
-            type = self._type_html(data["type"])
+            type_ = self._type_html(data["type_"])
             return models.Result(
                 body="\n".join(
                     [
-                        f"Bumps [{data['owner']['username']}/{data['name']}](https://registry.platformio.org/{type}/{data['owner']['username']}/{data['name']}) from {match['version']} to {_version['name']}.",
-                        f"- [Versions](https://registry.platformio.org/{type}/{data['owner']['username']}/{data['name']}/versions?version={_version['name']})",
+                        f"Bumps [{data['owner']['username']}/{data['name']}](https://registry.platformio.org/{type_}/{data['owner']['username']}/{data['name']}) from {match['version']} to {_version['name']}.",
+                        f"- [Versions](https://registry.platformio.org/{type_}/{data['owner']['username']}/{data['name']}/versions?version={_version['name']})",
                     ]
                 ),
                 package=f"{data['owner']['username']}/{data['name']}",
@@ -207,7 +200,6 @@ class Resolve:
         Returns:
             Version | None: The first eligible version greater than the requested version, or the first eligible version when no greater version is available; `None` if no valid version qualifies.
         """
-
         latest = None
         for _candidate in typing.cast(list[Version], data["versions"]):
             try:
@@ -305,23 +297,17 @@ class Resolve:
                 return _file["system"]
         return "*"
 
-    def _type_api(self, option: models.Option | str) -> Type | str:
+    def _type_api(self, option: models.Option | str) -> str:
         """Map dependency options to their PlatformIO registry category."""
-        if option == models.Option.LIB_DEPS:
-            return Type.LIBRARY
-        elif option == models.Option.PLATFORM:
-            return Type.PLATFORM
-        elif option == models.Option.PLATFORM_PACKAGES:
-            return Type.TOOL
-        else:
-            return option
+        return {
+            models.Option.LIB_DEPS.value: "library",
+            models.Option.PLATFORM.value: "platform",
+            models.Option.PLATFORM_PACKAGES.value: "tool",
+        }.get(str(option), str(option))
 
-    def _type_html(self, type: Type | str) -> str:
-        if type == Type.LIBRARY:
-            return "libraries"
-        elif type == Type.PLATFORM:
-            return "platforms"
-        elif type == Type.TOOL:
-            return "tools"
-        else:
-            return type
+    def _type_html(self, type_: str) -> str:
+        return {
+            "library": "libraries",
+            "platform": "platforms",
+            "tool": "tools",
+        }.get(type_, type_)
