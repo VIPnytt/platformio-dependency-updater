@@ -27,7 +27,7 @@ class Version(typing.TypedDict):
 class Data(typing.TypedDict):
     name: str
     owner: Owner
-    type_: str
+    type: str
     version: Version
     versions: list[Version]
 
@@ -94,7 +94,7 @@ class Resolve:
                 continue
             value = f"{'' if match['package'] is None else f'{match["package"]} @ '}{file['download_url']} ; {_version['name']}"
             if packaging.version.Version(_version["name"]) > version:
-                type_ = self._type_html(data["type_"])
+                type_ = self._type_html(data["type"])
                 return models.Result(
                     body="\n".join(
                         [
@@ -134,7 +134,7 @@ class Resolve:
                 continue
             value = f"{'' if match['package'] is None else f'{match["package"]} @ '}{file['download_url']} ; {_version['name']}"
             if packaging.version.Version(_version["name"]) > version:
-                type_ = self._type_html(data["type_"])
+                type_ = self._type_html(data["type"])
                 return models.Result(
                     body="\n".join(
                         [
@@ -174,7 +174,7 @@ class Resolve:
             return None
         value = f"{data['owner']['username']}/{data['name']} @ {_version['name']}"
         if packaging.version.Version(_version["name"]) > version:
-            type_ = self._type_html(data["type_"])
+            type_ = self._type_html(data["type"])
             return models.Result(
                 body="\n".join(
                     [
