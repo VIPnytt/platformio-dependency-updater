@@ -202,6 +202,7 @@ class Piobot:
         resolve = platformio.Resolve(self.cooldown)
         for description, handler in {
             "package": resolve.package,
+            "name": resolve.name,
             "download": resolve.download,
             "api": resolve.api,
         }.items():

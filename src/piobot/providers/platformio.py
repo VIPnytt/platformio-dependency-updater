@@ -40,10 +40,25 @@ class Download(typing.TypedDict):
     version: str
 
 
+class Item(typing.TypedDict):
+    name: str
+    owner: Owner
+    type: str
+
+
+class Name(typing.TypedDict):
+    name: str
+    version: str
+
+
 class Package(typing.TypedDict):
     name: str
-    owner: str | None
+    owner: str
     version: str
+
+
+class Search(typing.TypedDict):
+    items: list[Item]
 
 
 class Resolve:
@@ -66,9 +81,8 @@ class Resolve:
         self._download = re.compile(
             r"^(?:(?P<package>(?:[^/\s]+/)?[^/\s]+)?\s*@\s*)?https://dl\.registry\.platformio\.org/download/(?P<owner>[^/\s]+)/(?:library|platform|tool)/(?P<name>[^/\s]+)/(?P<version>[^/\s]+)/(?P<file>[^/\s]+)(?:\s*;.*)?$"
         )
-        self._package = re.compile(
-            r"^(?:(?P<owner>[^/\s]+)/)?(?P<name>[^/\s]+?)\s*@\s*(?P<version>[^\s]+)\S*(?:\s*;.*)?$"
-        )
+        self._name = re.compile(r"^(?P<name>[^/\s]+)\s*@\s*(?P<version>[^\s]+)\S*(?:\s*;.*)?$")
+        self._package = re.compile(r"^(?P<owner>[^/\s]+)/(?P<name>[^/\s]+)\s*@\s*(?P<version>[^\s]+)\S*(?:\s*;.*)?$")
 
     def api(self, dependency: models.Dependency) -> models.Result | str | None:
         """
@@ -150,6 +164,37 @@ class Resolve:
             return f"{dependency.option} = {value}"
         return None
 
+    def name(self, dependency: models.Dependency) -> models.Result | str | None:
+        match = typing.cast(Name | None, self._name.fullmatch(dependency.value))
+        if not match:
+            return None
+        version = packaging.version.Version(match["version"])
+        type_ = self._type_api(dependency.option)
+        for item in self._request_search(match["name"])["items"]:
+            if item["type"] != type_ or item["name"] != match["name"]:
+                continue
+            data = self._request_package(dependency.option, item["owner"]["username"], item["name"])
+            _version = self._parse(data, version)
+            if _version is None:
+                return None
+            value = f"{data['owner']['username']}/{data['name']} @ {_version['name']}"
+            if packaging.version.Version(_version["name"]) > version:
+                type_ = self._type_html(data["type"])
+                return models.Result(
+                    body="\n".join(
+                        [
+                            f"Bumps [{data['owner']['username']}/{data['name']}](https://registry.platformio.org/{type_}/{data['owner']['username']}/{data['name']}) from {match['version']} to {_version['name']}.",
+                            f"- [Versions](https://registry.platformio.org/{type_}/{data['owner']['username']}/{data['name']}/versions?version={_version['name']})",
+                        ]
+                    ),
+                    package=f"{data['owner']['username']}/{data['name']}",
+                    value=value,
+                    version_from=match["version"].removeprefix("v"),
+                    version_to=_version["name"].removeprefix("v"),
+                )
+            return f"{dependency.option} = {value}"
+        return None
+
     def package(self, dependency: models.Dependency) -> models.Result | str | None:
         """
         Resolve a package reference and produce an update result or assignment.
@@ -166,9 +211,7 @@ class Resolve:
         if not match:
             return None
         version = packaging.version.Version(match["version"])
-        data = self._request_package(
-            dependency.option, "platformio" if match["owner"] is None else match["owner"], match["name"]
-        )
+        data = self._request_package(dependency.option, match["owner"], match["name"])
         _version = self._parse(data, version)
         if _version is None:
             return None
@@ -256,6 +299,9 @@ class Resolve:
                 f"https://api.registry.platformio.org/v3/packages/{owner}/{self._type_api(option)}/{name}?version={version}"
             ).json(),
         )
+
+    def _request_search(self, name: str) -> Search:
+        return typing.cast(Search, self._request(f"https://api.registry.platformio.org/v3/search?query={name}").json())
 
     def _request(self, url: str) -> requests.Response:
         """
