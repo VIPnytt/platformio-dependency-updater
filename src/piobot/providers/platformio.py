@@ -1,6 +1,7 @@
 import datetime
 import re
 import typing
+import urllib.parse
 
 import packaging.version
 import requests
@@ -59,6 +60,9 @@ class Package(typing.TypedDict):
 
 class Search(typing.TypedDict):
     items: list[Item]
+    limit: int
+    page: int
+    total: int
 
 
 class Resolve:
@@ -169,31 +173,28 @@ class Resolve:
         if not match:
             return None
         version = packaging.version.Version(match["version"])
-        type_ = self._type_api(dependency.option)
-        for item in self._request_search(match["name"])["items"]:
-            if item["type"] != type_ or item["name"] != match["name"]:
-                continue
-            data = self._request_package(dependency.option, item["owner"]["username"], item["name"])
-            _version = self._parse(data, version)
-            if _version is None:
-                return None
-            value = f"{data['owner']['username']}/{data['name']} @ {_version['name']}"
-            if packaging.version.Version(_version["name"]) > version:
-                type_ = self._type_html(data["type"])
-                return models.Result(
-                    body="\n".join(
-                        [
-                            f"Bumps [{data['owner']['username']}/{data['name']}](https://registry.platformio.org/{type_}/{data['owner']['username']}/{data['name']}) from {match['version']} to {_version['name']}.",
-                            f"- [Versions](https://registry.platformio.org/{type_}/{data['owner']['username']}/{data['name']}/versions?version={_version['name']})",
-                        ]
-                    ),
-                    package=f"{data['owner']['username']}/{data['name']}",
-                    value=value,
-                    version_from=match["version"].removeprefix("v"),
-                    version_to=_version["name"].removeprefix("v"),
-                )
-            return f"{dependency.option} = {value}"
-        return None
+        data = self._request_search(dependency.option, match["name"], match["version"])
+        if not data:
+            return None
+        _version = self._parse(data, version)
+        if _version is None:
+            return None
+        value = f"{data['owner']['username']}/{data['name']} @ {_version['name']}"
+        if packaging.version.Version(_version["name"]) > version:
+            type_ = self._type_html(data["type"])
+            return models.Result(
+                body="\n".join(
+                    [
+                        f"Bumps [{data['owner']['username']}/{data['name']}](https://registry.platformio.org/{type_}/{data['owner']['username']}/{data['name']}) from {match['version']} to {_version['name']}.",
+                        f"- [Versions](https://registry.platformio.org/{type_}/{data['owner']['username']}/{data['name']}/versions?version={_version['name']})",
+                    ]
+                ),
+                package=f"{data['owner']['username']}/{data['name']}",
+                value=value,
+                version_from=match["version"].removeprefix("v"),
+                version_to=_version["name"].removeprefix("v"),
+            )
+        return f"{dependency.option} = {value}"
 
     def package(self, dependency: models.Dependency) -> models.Result | str | None:
         """
@@ -300,8 +301,23 @@ class Resolve:
             ).json(),
         )
 
-    def _request_search(self, name: str) -> Search:
-        return typing.cast(Search, self._request(f"https://api.registry.platformio.org/v3/search?query={name}").json())
+    def _request_search(self, option: str, name: str, version: str) -> Data | None:
+        _name = urllib.parse.quote(name)
+        _type = self._type_api(option)
+        search = typing.cast(Search, {"items": [], "limit": 50, "page": 0, "total": 1})
+        while search["page"] * search["limit"] < search["total"]:
+            search = typing.cast(
+                Search,
+                self._request(
+                    f"https://api.registry.platformio.org/v3/search?query=type:{_type}+name:{_name}&limit={search['limit']!s}{f'&page={(search["page"] + 1)!s}' if search['page'] else ''}"
+                ).json(),
+            )
+            for item in search["items"]:
+                try:
+                    return self._request_package_version(item["type"], item["owner"]["username"], item["name"], version)
+                except requests.exceptions.RequestException:
+                    print(f"::debug::Invalid version: {item['owner']['username']}/{item['name']} {version}")
+        return None
 
     def _request(self, url: str) -> requests.Response:
         """
