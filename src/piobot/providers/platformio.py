@@ -171,12 +171,12 @@ class Resolve:
     def name(self, dependency: models.Dependency) -> models.Result | str | None:
         """
         Resolve an unscoped PlatformIO dependency name and version.
-        
+
         Parameters:
-        	dependency (models.Dependency): Dependency reference containing the package name, requested version, and package type option.
-        
+            dependency (models.Dependency): Dependency reference containing the package name, requested version, and package type option.
+
         Returns:
-        	models.Result | str | None: An update result when a newer version is available, an assignment string when the requested version remains selected, or `None` when the dependency cannot be resolved.
+            models.Result | str | None: An update result when a newer version is available, an assignment string when the requested version remains selected, or `None` when the dependency cannot be resolved.
         """
         match = typing.cast(Name | None, self._name.fullmatch(dependency.value))
         if not match:
@@ -313,12 +313,12 @@ class Resolve:
     def _request_search(self, option: str, name: str, version: str) -> Data | None:
         """
         Find package metadata for a specific version by searching the registry.
-        
+
         Parameters:
             option (str): Package type or API option used to scope the search.
             name (str): Package name to search for.
             version (str): Requested package version.
-        
+
         Returns:
             Data | None: Metadata for the requested package version, or `None` if no matching package is found.
         """
