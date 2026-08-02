@@ -1,6 +1,7 @@
 import datetime
 import re
 import typing
+import urllib.parse
 
 import packaging.version
 import requests
@@ -40,10 +41,28 @@ class Download(typing.TypedDict):
     version: str
 
 
+class Item(typing.TypedDict):
+    name: str
+    owner: Owner
+    type: str
+
+
+class Name(typing.TypedDict):
+    name: str
+    version: str
+
+
 class Package(typing.TypedDict):
     name: str
-    owner: str | None
+    owner: str
     version: str
+
+
+class Search(typing.TypedDict):
+    items: list[Item]
+    limit: int
+    page: int
+    total: int
 
 
 class Resolve:
@@ -66,9 +85,8 @@ class Resolve:
         self._download = re.compile(
             r"^(?:(?P<package>(?:[^/\s]+/)?[^/\s]+)?\s*@\s*)?https://dl\.registry\.platformio\.org/download/(?P<owner>[^/\s]+)/(?:library|platform|tool)/(?P<name>[^/\s]+)/(?P<version>[^/\s]+)/(?P<file>[^/\s]+)(?:\s*;.*)?$"
         )
-        self._package = re.compile(
-            r"^(?:(?P<owner>[^/\s]+)/)?(?P<name>[^/\s]+?)\s*@\s*(?P<version>[^\s]+)\S*(?:\s*;.*)?$"
-        )
+        self._name = re.compile(r"^(?P<name>[^/\s]+)\s*@\s*(?P<version>[^\s]+)\S*(?:\s*;.*)?$")
+        self._package = re.compile(r"^(?P<owner>[^/\s]+)/(?P<name>[^/\s]+)\s*@\s*(?P<version>[^\s]+)\S*(?:\s*;.*)?$")
 
     def api(self, dependency: models.Dependency) -> models.Result | str | None:
         """
@@ -150,6 +168,43 @@ class Resolve:
             return f"{dependency.option} = {value}"
         return None
 
+    def name(self, dependency: models.Dependency) -> models.Result | str | None:
+        """
+        Resolve an unscoped PlatformIO dependency name and version.
+
+        Parameters:
+            dependency (models.Dependency): Dependency reference containing the package name, requested version, and package type option.
+
+        Returns:
+            models.Result | str | None: An update result when a newer version is available, an assignment string when the requested version remains selected, or `None` when the dependency cannot be resolved.
+        """
+        match = typing.cast(Name | None, self._name.fullmatch(dependency.value))
+        if not match:
+            return None
+        version = packaging.version.Version(match["version"])
+        data = self._request_search(dependency.option, match["name"], match["version"])
+        if not data:
+            return None
+        _version = self._parse(data, version)
+        if _version is None:
+            return None
+        value = f"{data['owner']['username']}/{data['name']} @ {_version['name']}"
+        if packaging.version.Version(_version["name"]) > version:
+            type_ = self._type_html(data["type"])
+            return models.Result(
+                body="\n".join(
+                    [
+                        f"Bumps [{data['owner']['username']}/{data['name']}](https://registry.platformio.org/{type_}/{data['owner']['username']}/{data['name']}) from {match['version']} to {_version['name']}.",
+                        f"- [Versions](https://registry.platformio.org/{type_}/{data['owner']['username']}/{data['name']}/versions?version={_version['name']})",
+                    ]
+                ),
+                package=f"{data['owner']['username']}/{data['name']}",
+                value=value,
+                version_from=match["version"].removeprefix("v"),
+                version_to=_version["name"].removeprefix("v"),
+            )
+        return f"{dependency.option} = {value}"
+
     def package(self, dependency: models.Dependency) -> models.Result | str | None:
         """
         Resolve a package reference and produce an update result or assignment.
@@ -166,9 +221,7 @@ class Resolve:
         if not match:
             return None
         version = packaging.version.Version(match["version"])
-        data = self._request_package(
-            dependency.option, "platformio" if match["owner"] is None else match["owner"], match["name"]
-        )
+        data = self._request_package(dependency.option, match["owner"], match["name"])
         _version = self._parse(data, version)
         if _version is None:
             return None
@@ -253,9 +306,37 @@ class Resolve:
         return typing.cast(
             Data,
             self._request(
-                f"https://api.registry.platformio.org/v3/packages/{owner}/{self._type_api(option)}/{name}?version={version}"
+                f"https://api.registry.platformio.org/v3/packages/{owner}/{self._type_api(option)}/{name}?version={urllib.parse.quote(version)}"
             ).json(),
         )
+
+    def _request_search(self, option: str, name: str, version: str) -> Data | None:
+        """
+        Find package metadata for a specific version by searching the registry.
+
+        Parameters:
+            option (str): Package type or API option used to scope the search.
+            name (str): Package name to search for.
+            version (str): Requested package version.
+
+        Returns:
+            Data | None: Metadata for the requested package version, or `None` if no matching package is found.
+        """
+        _type = self._type_api(option)
+        search = typing.cast(Search, {"items": [], "limit": 50, "page": 0, "total": 1})
+        while search["page"] * search["limit"] < search["total"]:
+            search = typing.cast(
+                Search,
+                self._request(
+                    f"https://api.registry.platformio.org/v3/search?query=type:{_type}+name:{name}&limit={search['limit']!s}{f'&page={(search["page"] + 1)!s}' if search['page'] else ''}"
+                ).json(),
+            )
+            for item in search["items"]:
+                try:
+                    return self._request_package_version(item["type"], item["owner"]["username"], item["name"], version)
+                except requests.exceptions.RequestException:
+                    print(f"::debug::Invalid version: {item['owner']['username']}/{item['name']} {version}")
+        return None
 
     def _request(self, url: str) -> requests.Response:
         """
