@@ -306,7 +306,7 @@ class Resolve:
         return typing.cast(
             Data,
             self._request(
-                f"https://api.registry.platformio.org/v3/packages/{owner}/{self._type_api(option)}/{name}?version={version}"
+                f"https://api.registry.platformio.org/v3/packages/{owner}/{self._type_api(option)}/{name}?version={urllib.parse.quote(version)}"
             ).json(),
         )
 
@@ -322,14 +322,13 @@ class Resolve:
         Returns:
             Data | None: Metadata for the requested package version, or `None` if no matching package is found.
         """
-        _name = urllib.parse.quote(name)
         _type = self._type_api(option)
         search = typing.cast(Search, {"items": [], "limit": 50, "page": 0, "total": 1})
         while search["page"] * search["limit"] < search["total"]:
             search = typing.cast(
                 Search,
                 self._request(
-                    f"https://api.registry.platformio.org/v3/search?query=type:{_type}+name:{_name}&limit={search['limit']!s}{f'&page={(search["page"] + 1)!s}' if search['page'] else ''}"
+                    f"https://api.registry.platformio.org/v3/search?query=type:{_type}+name:{name}&limit={search['limit']!s}{f'&page={(search["page"] + 1)!s}' if search['page'] else ''}"
                 ).json(),
             )
             for item in search["items"]:
