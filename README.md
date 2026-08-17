@@ -41,7 +41,7 @@ jobs:
         uses: actions/checkout@v7
 
       - name: Check for dependency updates
-        uses: VIPnytt/platformio-dependency-updater@v1.0.0
+        uses: VIPnytt/platformio-dependency-updater@v1.0.2
 ```
 
 ## Options
@@ -92,7 +92,7 @@ jobs:
         uses: actions/checkout@v7
 
       - name: Check for dependency updates
-        uses: VIPnytt/platformio-dependency-updater@v1.0.0
+        uses: VIPnytt/platformio-dependency-updater@v1.0.2
         with:
           cooldown: 3                     # days
           labels: dependencies,platformio # comma-separated list
