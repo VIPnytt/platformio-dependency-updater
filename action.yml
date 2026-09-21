@@ -6,6 +6,15 @@ branding:
   color: orange
 
 inputs:
+  token:
+    description: >-
+      Token used to read dependency repositories and to open pull requests.
+      Defaults to the workflow token, which is scoped to this repository and
+      whose pull requests do not start workflow runs. Supply a personal access
+      token or a GitHub App token to resolve dependencies hosted in private
+      repositories, or to have CI run against the pull requests this opens.
+    default: ${{ github.token }}
+
   cooldown:
     description: "Delay dependency updates for a number of days"
     default: "3"
@@ -38,7 +47,7 @@ runs:
       env:
         COOLDOWN: ${{ inputs.cooldown }}
         GITHUB_ACTION_PATH: ${{ github.action_path }}
-        GITHUB_TOKEN: ${{ github.token }}
+        GITHUB_TOKEN: ${{ inputs.token }}
         LABELS: ${{ inputs.labels }}
         OPEN_PULL_REQUESTS_LIMIT: ${{ inputs.open-pull-requests-limit }}
         PROJECT_DIR: ${{ inputs.project-dir }}
