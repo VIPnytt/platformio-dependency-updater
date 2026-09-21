@@ -94,11 +94,37 @@ jobs:
       - name: Check for dependency updates
         uses: VIPnytt/platformio-dependency-updater@v1.0.2
         with:
+          token: ${{ secrets.GITHUB_TOKEN }} # see "Choosing a token"
           cooldown: 3                     # days
           labels: dependencies,platformio # comma-separated list
           open-pull-requests-limit: 5     # PRs
           project-dir: .                  # directory containing platformio.ini
 ```
+
+## Choosing a token
+
+`token` defaults to the workflow token, which is enough for a repository whose
+dependencies are all public and where the pull requests are reviewed by hand.
+
+Supply a personal access token or a GitHub App token instead when either of the
+following applies:
+
+- **Dependencies live in private repositories.** The workflow token is scoped to
+  the repository running the workflow, so tags and releases in any other private
+  repository are invisible and those dependencies silently never update.
+- **You want CI to run on the pull requests.** GitHub does not start workflow
+  runs for events raised by the workflow token, so pull requests opened with it
+  arrive with no checks. A dependency bump that has not been built is not worth
+  much, and firmware projects in particular want the build and any size report
+  attached before the bump is merged.
+
+```yaml
+        with:
+          token: ${{ secrets.DEPENDENCY_UPDATER_TOKEN }}
+```
+
+The token needs `contents: write` and `pull-requests: write` on this repository,
+plus read access to any private repository a dependency points at.
 
 ## Troubleshooting
 
