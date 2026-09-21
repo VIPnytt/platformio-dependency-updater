@@ -653,12 +653,21 @@ class Resolve:
         """
         version = packaging.version.Version(tag)
         prerelease = version.is_prerelease
-        if not prerelease:
-            try:
-                prerelease = self._request_release_id(name, tag)["prerelease"]
-            except requests.exceptions.RequestException:
-                print(f"::debug::Invalid release: {name} {tag}")
+        current_published_at = None
+        try:
+            _current = self._request_release_id(name, tag)
+            if not prerelease:
+                prerelease = _current["prerelease"]
+            current_published_at = _current.get("published_at")
+        except requests.exceptions.RequestException:
+            print(f"::debug::Invalid release: {name} {tag}")
+
+        current_timestamp = (
+            datetime.datetime.fromisoformat(current_published_at) if current_published_at else None
+        )
         latest = None
+        best = None
+        best_version = version
         url = f"https://api.github.com/repos/{name}/releases?per_page=100"
         while url:
             response = self._request(url)
@@ -671,8 +680,22 @@ class Resolve:
                     _timestamp = datetime.datetime.fromisoformat(_published_at)
                     if datetime.datetime.now(_timestamp.tzinfo) - _timestamp < self.cooldown:
                         continue
-                    elif _version > version:
-                        return _release
+                    # An update is a release published *after* the one in use.
+                    # Version order alone is not enough: a project that changes
+                    # versioning scheme has old releases that sort above current
+                    # ones. pioarduino went from 2024.07.00 to 55.03.312, and
+                    # 2024 > 55, so picking by version alone proposes a release
+                    # from two years earlier as an upgrade.
+                    if current_timestamp is not None and _timestamp <= current_timestamp:
+                        if not latest:
+                            latest = _release
+                        continue
+                    if _version > best_version:
+                        # Highest eligible version, not the first encountered:
+                        # the API returns newest first, so a recent backport
+                        # would otherwise win over a higher release.
+                        best = _release
+                        best_version = _version
                     elif not latest:
                         latest = _release
                 except packaging.version.InvalidVersion:
@@ -680,7 +703,7 @@ class Resolve:
                     print(f"::debug::Invalid version: {_owner}/{_repo} {_release['tag_name']}")
                     continue
             url = response.links.get("next", {}).get("url")
-        return latest
+        return best or latest
 
     def _request_release_id(self, name: str, tag: str) -> Release:
         """
