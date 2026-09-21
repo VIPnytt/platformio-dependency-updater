@@ -143,6 +143,12 @@ The same applies to other dependency formats where the version cannot be directl
 
 If a dependency cannot be resolved, it will be reported as an unresolved dependency in the workflow summary. This usually indicates that a version comment is required or that the dependency format is not currently supported.
 
+### A registry package is never updated
+
+Registry package names may contain spaces, such as `adafruit/Adafruit NeoPixel`.
+These are matched and requested correctly; if one is still skipped, check that
+it is pinned to an exact version rather than a range.
+
 ### Pull requests does not appear
 
 Ensure the workflow has write permissions and that it has permission to create pull requests.
