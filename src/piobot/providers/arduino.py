@@ -29,27 +29,10 @@ class Resolve:
     _libraries: re.Pattern[str]
 
     def __init__(self) -> None:
-        """
-        Initialize the resolver and load the Arduino library index.
-
-        If the library index cannot be fetched, initialize with an empty library list.
-        """
+        self._data = typing.cast(Data, {"libraries": []})
         self._libraries = re.compile(
             r"^(?:(?P<package>(?:[^/\s]+/)?[^/\s]+)?\s*@\s*)?https://downloads\.arduino\.cc/libraries/(?:[^\s]+)/(?P<name>[^/\s]+)-(?P<version>[^/\s]+)\.zip(?:\s*;.*)?$"
         )
-        try:
-            response = requests.get(
-                "https://downloads.arduino.cc/libraries/library_index.json",
-                headers={
-                    "Accept": "application/json",
-                    "User-Agent": models.Config.USER_AGENT,
-                },
-                timeout=models.Config.TIMEOUT,
-            )
-            response.raise_for_status()
-            self._data = typing.cast(Data, response.json())
-        except requests.exceptions.RequestException:
-            self._data = typing.cast(Data, {"libraries": []})
 
     def library(self, dependency: models.Dependency) -> models.Result | str | None:
         """
@@ -95,6 +78,8 @@ class Resolve:
             Library | None: The first matching library with a greater eligible version, or the first eligible matching library when no greater version exists; `None` if no matching library is found.
         """
         latest = None
+        if not self._data["libraries"]:
+            self._request()
         for _library in self._data["libraries"]:
             if _library["name"] != name:
                 continue
@@ -110,3 +95,15 @@ class Resolve:
                 print(f"::debug::Invalid version: {_library['name']} {_library['version']}")
                 continue
         return latest
+
+    def _request(self) -> None:
+        response = requests.get(
+            "https://downloads.arduino.cc/libraries/library_index.json",
+            headers={
+                "Accept": "application/json",
+                "User-Agent": models.Config.USER_AGENT,
+            },
+            timeout=models.Config.TIMEOUT,
+        )
+        response.raise_for_status()
+        self._data = typing.cast(Data, response.json())
