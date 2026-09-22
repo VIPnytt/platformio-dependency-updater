@@ -1,10 +1,11 @@
 name: uv
 
 on:
-  pull_request:
-    branches:
-      - main
+  merge_group:
+    types:
+      - checks_requested
 
+  pull_request:
   workflow_dispatch:
 
 permissions:
