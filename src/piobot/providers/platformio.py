@@ -328,7 +328,7 @@ class Resolve:
             search = typing.cast(
                 Search,
                 self._request(
-                    f"https://api.registry.platformio.org/v3/search?query=type:{_type}+name:{urllib.parse.quote(name, '')}&limit={search['limit']!s}{f'&page={(search["page"] + 1)!s}' if search['page'] else ''}"
+                    f"https://api.registry.platformio.org/v3/search?query=type:{_type}+name:%22{urllib.parse.quote(name, '')}%22&limit={search['limit']!s}{f'&page={(search["page"] + 1)!s}' if search['page'] else ''}"
                 ).json(),
             )
             for item in search["items"]:
