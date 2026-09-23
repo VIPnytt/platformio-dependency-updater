@@ -286,7 +286,7 @@ class Resolve:
         return typing.cast(
             Data,
             self._request(
-                f"https://api.registry.platformio.org/v3/packages/{owner}/{self._type_api(option)}/{urllib.parse.quote(name, "")}"
+                f"https://api.registry.platformio.org/v3/packages/{owner}/{self._type_api(option)}/{urllib.parse.quote(name, '')}"
             ).json(),
         )
 
@@ -306,7 +306,7 @@ class Resolve:
         return typing.cast(
             Data,
             self._request(
-                f"https://api.registry.platformio.org/v3/packages/{owner}/{self._type_api(option)}/{urllib.parse.quote(name, "")}?version={urllib.parse.quote(version, "")}"
+                f"https://api.registry.platformio.org/v3/packages/{owner}/{self._type_api(option)}/{urllib.parse.quote(name, '')}?version={urllib.parse.quote(version, '')}"
             ).json(),
         )
 
@@ -328,7 +328,7 @@ class Resolve:
             search = typing.cast(
                 Search,
                 self._request(
-                    f"https://api.registry.platformio.org/v3/search?query=type:{_type}+name:{urllib.parse.quote(name, "")}&limit={search['limit']!s}{f'&page={(search["page"] + 1)!s}' if search['page'] else ''}"
+                    f"https://api.registry.platformio.org/v3/search?query=type:{_type}+name:{urllib.parse.quote(name, '')}&limit={search['limit']!s}{f'&page={(search["page"] + 1)!s}' if search['page'] else ''}"
                 ).json(),
             )
             for item in search["items"]:
