@@ -130,8 +130,8 @@ class Resolve:
                     ),
                     package=f"{data['owner']['username']}/{data['name']}",
                     value=value,
-                    version_from=version_.removeprefix("v"),
-                    version_to=_version["name"].removeprefix("v"),
+                    version_from=version_,
+                    version_to=_version["name"],
                 )
             return f"{dependency.option} = {value}"
         return None
@@ -178,8 +178,8 @@ class Resolve:
                     ),
                     package=f"{data['owner']['username']}/{data['name']}",
                     value=value,
-                    version_from=version_.removeprefix("v"),
-                    version_to=_version["name"].removeprefix("v"),
+                    version_from=version_,
+                    version_to=_version["name"],
                 )
             return f"{dependency.option} = {value}"
         return None
@@ -197,29 +197,30 @@ class Resolve:
         match = typing.cast(Name | None, self._name.fullmatch(dependency.value))
         if not match:
             return None
-        version = packaging.version.Version(match["version"])
-        data = self._request_search(dependency.option, match["name"], match["version"])
+        operator, version_ = self._operator(match["version"])
+        version = packaging.version.Version(version_)
+        data = self._request_search(dependency.option, match["name"], version_)
         if not data:
             return None
-        _version = self._parse(data, version)
-        if _version is None:
+        candidate = self._parse(data, version)
+        if candidate is None:
             return None
-        value = f"{data['owner']['username']}/{data['name']} @ {_version['name']}"
-        if packaging.version.Version(_version["name"]) > version:
+        value = f"{data['owner']['username']}/{data['name']} @ {operator}{candidate['name']}"
+        if packaging.version.Version(candidate["name"]) > version:
             return models.Result(
                 body="\n".join(
                     self._body(
                         data["type"],
                         data["owner"]["username"],
                         data["name"],
-                        match["version"],
-                        _version["name"],
+                        version_,
+                        candidate["name"],
                     )
                 ),
                 package=f"{data['owner']['username']}/{data['name']}",
                 value=value,
-                version_from=match["version"].removeprefix("v"),
-                version_to=_version["name"].removeprefix("v"),
+                version_from=version_,
+                version_to=candidate["name"],
             )
         return f"{dependency.option} = {value}"
 
@@ -238,27 +239,28 @@ class Resolve:
         match = typing.cast(Package | None, self._package.fullmatch(dependency.value))
         if not match:
             return None
-        version = packaging.version.Version(match["version"])
+        operator, version_ = self._operator(match["version"])
+        version = packaging.version.Version(version_)
         data = self._request_package(dependency.option, match["owner"], match["name"])
-        _version = self._parse(data, version)
-        if _version is None:
+        candidate = self._parse(data, version)
+        if candidate is None:
             return None
-        value = f"{data['owner']['username']}/{data['name']} @ {_version['name']}"
-        if packaging.version.Version(_version["name"]) > version:
+        value = f"{data['owner']['username']}/{data['name']} @ {operator}{candidate['name']}"
+        if packaging.version.Version(candidate["name"]) > version:
             return models.Result(
                 body="\n".join(
                     self._body(
                         data["type"],
                         data["owner"]["username"],
                         data["name"],
-                        match["version"],
-                        _version["name"],
+                        version_,
+                        candidate["name"],
                     )
                 ),
                 package=f"{data['owner']['username']}/{data['name']}",
                 value=value,
-                version_from=match["version"].removeprefix("v"),
-                version_to=_version["name"].removeprefix("v"),
+                version_from=version_,
+                version_to=candidate["name"],
             )
         return f"{dependency.option} = {value}"
 
@@ -275,6 +277,13 @@ class Resolve:
             f"Bumps [{owner}/{name}](https://registry.platformio.org/{type_}/{owner_}/{name_}) from {version_from} to {version_to}.",
             f"- [Versions](https://registry.platformio.org/{type_}/{owner_}/{name_}/versions?version={version_})",
         ]
+
+    def _operator(self, version: str) -> tuple[str, str]:
+        if "," not in version:
+            for _operator in ("^", "~", ">="):
+                if version.startswith(_operator):
+                    return _operator, version.removeprefix(_operator)
+        return "", version
 
     def _parse(self, data: Data, version: packaging.version.Version) -> Version | None:
         """
