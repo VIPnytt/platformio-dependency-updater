@@ -102,6 +102,14 @@ jobs:
 
 ## Troubleshooting
 
+### Unexpected or outdated version proposed
+
+Upstream projects occasionally change versioning schemes (such as `pioarduino` moving from CalVer `2024.07.00` to SemVer `55.03.312`), or actively maintain multiple release lines at once (like `esp-idf` maintaining `5.x.x` alongside `6.x.x`).
+
+Prioritizing version progression over release dates ensures projects on stable branches continue receiving backports and security fixes without losing their upgrade path. A natural trade-off is that older historical releases with high numerical values, like CalVer tags, can initially appear as candidate upgrades.
+
+Close pull requests for unwanted releases. The action records the closure and will not propose that release again, but will continue checking for future updates.
+
 ### Dependency cannot be resolved
 
 Available updates are determined by comparing the current version with versions reported by the provider. Some dependency URLs do not contain enough information to determine the current version.
@@ -109,8 +117,7 @@ Available updates are determined by comparing the current version with versions 
 For example, a commit SHA identifies a specific revision, but it does not indicate which release or tag it belongs to. In these cases, add the current version as an inline comment:
 
 ```ini
-lib_deps =
-    https://github.com/example/library/archive/<commit>.tar.gz ; v1.0.0
+lib_deps = https://github.com/example/library/archive/<commit>.tar.gz ; v1.0.0
 ```
 
 The same applies to other dependency formats where the version cannot be directly extracted from the URL.
