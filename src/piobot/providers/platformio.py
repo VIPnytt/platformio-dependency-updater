@@ -45,6 +45,7 @@ class Item(typing.TypedDict):
     name: str
     owner: Owner
     type: str
+    version: Version
 
 
 class Name(typing.TypedDict):
@@ -199,7 +200,11 @@ class Resolve:
             return None
         operator, version_ = self._operator(match["version"])
         version = packaging.version.Version(version_)
-        data = self._request_search(dependency.option, match["name"], version_)
+        data = (
+            self._request_search_version(dependency.option, match["name"], version_)
+            if len(operator) == 0
+            else self._request_search(dependency.option, match["name"], version_)
+        )
         if not data:
             return None
         candidate = self._parse(data, version)
@@ -354,6 +359,29 @@ class Resolve:
         )
 
     def _request_search(self, option: str, name: str, version: str) -> Data | None:
+        _type = self._type(option)
+        _version = packaging.version.Version(version)
+        search = typing.cast(Search, {"items": [], "limit": 50, "page": 0, "total": 1})
+        while search["page"] * search["limit"] < search["total"]:
+            search = typing.cast(
+                Search,
+                self._request(
+                    f"https://api.registry.platformio.org/v3/search?query=type:{_type}+name:%22{urllib.parse.quote(name, '')}%22&limit={search['limit']!s}{f'&page={(search["page"] + 1)!s}' if search['page'] else ''}"
+                ).json(),
+            )
+            for item in search["items"]:
+                data = self._request_package(item["type"], item["owner"]["username"], item["name"])
+                for _candidate in data["versions"]:
+                    try:
+                        if packaging.version.Version(_candidate["name"]) >= _version:
+                            return data
+                    except packaging.version.InvalidVersion:
+                        print(
+                            f"::debug::Invalid version: {item['owner']['username']}/{item['name']} {_candidate['name']}"
+                        )
+        return None
+
+    def _request_search_version(self, option: str, name: str, version: str) -> Data | None:
         """
         Find package metadata for a specific version by searching the registry.
 
