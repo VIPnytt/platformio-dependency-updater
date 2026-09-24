@@ -108,7 +108,7 @@ Upstream projects occasionally change versioning schemes (such as `pioarduino` m
 
 Prioritizing version progression over release dates ensures projects on stable branches continue receiving backports and security fixes without losing their upgrade path. A natural trade-off is that older historical releases with high numerical values, like CalVer tags, can initially appear as candidate upgrades.
 
-Close pull requests for unwanted releases. The action records the closure and will not propose that release again, but will continue checking for future updates.
+Close pull requests for unwanted releases. The action records the closure and will not propose that release again, but will continue checking on schedule and propose an update once a newer release appears upstream.
 
 ### Dependency cannot be resolved
 
