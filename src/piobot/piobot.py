@@ -265,7 +265,7 @@ class Piobot:
         self._git.remote().push(head).raise_if_error()
         pr = repo.create_pull(
             base=self.ref,
-            body=result.body,
+            body=f"{result.body}\n\n---\n<sub>Close this PR to ignore this release. [PlatformIO Dependency Updater](https://github.com/VIPnytt/platformio-dependency-updater) will retain this choice.</sub>",
             head=head,
             title=f"Bump {result.package} from {result.version_from} to {result.version_to}{'' if str(self.ini.parent) == '.' else f' in /{self.ini.parent!s}'}",
         )
