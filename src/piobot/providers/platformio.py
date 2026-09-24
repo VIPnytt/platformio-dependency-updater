@@ -85,8 +85,8 @@ class Resolve:
         self._download = re.compile(
             r"^(?:(?P<package>(?:[^/\s]+/)?[^/\s]+)?\s*@\s*)?https://dl\.registry\.platformio\.org/download/(?P<owner>[^/\s]+)/(?:library|platform|tool)/(?P<name>[^/\s]+)/(?P<version>[^/\s]+)/(?P<file>[^/\s]+)(?:\s*;.*)?$"
         )
-        self._name = re.compile(r"^(?P<name>[^/\s]+)\s*@\s*(?P<version>[^\s]+)\S*(?:\s*;.*)?$")
-        self._package = re.compile(r"^(?P<owner>[^/\s]+)/(?P<name>[^/\s]+)\s*@\s*(?P<version>[^\s]+)\S*(?:\s*;.*)?$")
+        self._name = re.compile(r"^(?P<name>[^/@]+?)\s*@\s*(?P<version>[^\s]+)\S*(?:\s*;.*)?$")
+        self._package = re.compile(r"^(?P<owner>[^/\s]+)/(?P<name>[^/@]+?)\s*@\s*(?P<version>[^\s]+)\S*(?:\s*;.*)?$")
 
     def api(self, dependency: models.Dependency) -> models.Result | str | None:
         """
@@ -101,28 +101,36 @@ class Resolve:
         match = typing.cast(Download | None, self._api.fullmatch(dependency.value))
         if not match:
             return None
-        version = packaging.version.Version(match["version"])
-        data = self._request_package_version(dependency.option, match["owner"], match["name"], match["version"])
+        version_ = urllib.parse.unquote(match["version"])
+        version = packaging.version.Version(version_)
+        data = self._request_package_version(
+            dependency.option,
+            urllib.parse.unquote(match["owner"]),
+            urllib.parse.unquote(match["name"]),
+            urllib.parse.unquote(match["version"]),
+        )
         _version = self._parse(data, version)
         if _version is None:
             return None
-        system = self._system(data["version"]["files"], match["file"])
+        system = self._system(data["version"]["files"], urllib.parse.unquote(match["file"]))
         for file in _version["files"]:
             if file["system"] != system:
                 continue
             value = f"{'' if match['package'] is None else f'{match["package"]} @ '}{file['download_url']} ; {_version['name']}"
             if packaging.version.Version(_version["name"]) > version:
-                type_ = self._type_html(data["type"])
                 return models.Result(
                     body="\n".join(
-                        [
-                            f"Bumps [{data['owner']['username']}/{data['name']}](https://registry.platformio.org/{type_}/{data['owner']['username']}/{data['name']}) from {match['version']} to {_version['name']}.",
-                            f"- [Versions](https://registry.platformio.org/{type_}/{data['owner']['username']}/{data['name']}/versions?version={_version['name']})",
-                        ]
+                        self._body(
+                            data["type"],
+                            data["owner"]["username"],
+                            data["name"],
+                            version_,
+                            _version["name"],
+                        )
                     ),
                     package=f"{data['owner']['username']}/{data['name']}",
                     value=value,
-                    version_from=match["version"].removeprefix("v"),
+                    version_from=version_.removeprefix("v"),
                     version_to=_version["name"].removeprefix("v"),
                 )
             return f"{dependency.option} = {value}"
@@ -141,28 +149,36 @@ class Resolve:
         match = typing.cast(Download | None, self._download.fullmatch(dependency.value))
         if not match:
             return None
-        version = packaging.version.Version(match["version"])
-        data = self._request_package_version(dependency.option, match["owner"], match["name"], match["version"])
+        version_ = urllib.parse.unquote(match["version"])
+        version = packaging.version.Version(version_)
+        data = self._request_package_version(
+            dependency.option,
+            urllib.parse.unquote(match["owner"]),
+            urllib.parse.unquote(match["name"]),
+            urllib.parse.unquote(match["version"]),
+        )
         _version = self._parse(data, version)
         if _version is None:
             return None
-        system = self._system(data["version"]["files"], match["file"])
+        system = self._system(data["version"]["files"], urllib.parse.unquote(match["file"]))
         for file in _version["files"]:
             if file["system"] != system:
                 continue
             value = f"{'' if match['package'] is None else f'{match["package"]} @ '}{file['download_url']} ; {_version['name']}"
             if packaging.version.Version(_version["name"]) > version:
-                type_ = self._type_html(data["type"])
                 return models.Result(
                     body="\n".join(
-                        [
-                            f"Bumps [{data['owner']['username']}/{data['name']}](https://registry.platformio.org/{type_}/{data['owner']['username']}/{data['name']}) from {match['version']} to {_version['name']}.",
-                            f"- [Versions](https://registry.platformio.org/{type_}/{data['owner']['username']}/{data['name']}/versions?version={_version['name']})",
-                        ]
+                        self._body(
+                            data["type"],
+                            data["owner"]["username"],
+                            data["name"],
+                            version_,
+                            _version["name"],
+                        )
                     ),
                     package=f"{data['owner']['username']}/{data['name']}",
                     value=value,
-                    version_from=match["version"].removeprefix("v"),
+                    version_from=version_.removeprefix("v"),
                     version_to=_version["name"].removeprefix("v"),
                 )
             return f"{dependency.option} = {value}"
@@ -190,13 +206,15 @@ class Resolve:
             return None
         value = f"{data['owner']['username']}/{data['name']} @ {_version['name']}"
         if packaging.version.Version(_version["name"]) > version:
-            type_ = self._type_html(data["type"])
             return models.Result(
                 body="\n".join(
-                    [
-                        f"Bumps [{data['owner']['username']}/{data['name']}](https://registry.platformio.org/{type_}/{data['owner']['username']}/{data['name']}) from {match['version']} to {_version['name']}.",
-                        f"- [Versions](https://registry.platformio.org/{type_}/{data['owner']['username']}/{data['name']}/versions?version={_version['name']})",
-                    ]
+                    self._body(
+                        data["type"],
+                        data["owner"]["username"],
+                        data["name"],
+                        match["version"],
+                        _version["name"],
+                    )
                 ),
                 package=f"{data['owner']['username']}/{data['name']}",
                 value=value,
@@ -227,13 +245,15 @@ class Resolve:
             return None
         value = f"{data['owner']['username']}/{data['name']} @ {_version['name']}"
         if packaging.version.Version(_version["name"]) > version:
-            type_ = self._type_html(data["type"])
             return models.Result(
                 body="\n".join(
-                    [
-                        f"Bumps [{data['owner']['username']}/{data['name']}](https://registry.platformio.org/{type_}/{data['owner']['username']}/{data['name']}) from {match['version']} to {_version['name']}.",
-                        f"- [Versions](https://registry.platformio.org/{type_}/{data['owner']['username']}/{data['name']}/versions?version={_version['name']})",
-                    ]
+                    self._body(
+                        data["type"],
+                        data["owner"]["username"],
+                        data["name"],
+                        match["version"],
+                        _version["name"],
+                    )
                 ),
                 package=f"{data['owner']['username']}/{data['name']}",
                 value=value,
@@ -241,6 +261,20 @@ class Resolve:
                 version_to=_version["name"].removeprefix("v"),
             )
         return f"{dependency.option} = {value}"
+
+    def _body(self, option: str, owner: str, name: str, version_from: str, version_to: str) -> list[str]:
+        type_ = {
+            "library": "libraries",
+            "platform": "platforms",
+            "tool": "tools",
+        }.get(option, urllib.parse.quote(option, ""))
+        owner_ = urllib.parse.quote(owner, "")
+        name_ = urllib.parse.quote(name, "")
+        version_ = urllib.parse.quote(version_to, "")
+        return [
+            f"Bumps [{owner}/{name}](https://registry.platformio.org/{type_}/{owner_}/{name_}) from {version_from} to {version_to}.",
+            f"- [Versions](https://registry.platformio.org/{type_}/{owner_}/{name_}/versions?version={version_})",
+        ]
 
     def _parse(self, data: Data, version: packaging.version.Version) -> Version | None:
         """
@@ -286,7 +320,7 @@ class Resolve:
         return typing.cast(
             Data,
             self._request(
-                f"https://api.registry.platformio.org/v3/packages/{owner}/{self._type_api(option)}/{name}"
+                f"https://api.registry.platformio.org/v3/packages/{urllib.parse.quote(owner, '')}/{self._type(option)}/{urllib.parse.quote(name, '')}"
             ).json(),
         )
 
@@ -306,7 +340,7 @@ class Resolve:
         return typing.cast(
             Data,
             self._request(
-                f"https://api.registry.platformio.org/v3/packages/{owner}/{self._type_api(option)}/{name}?version={urllib.parse.quote(version)}"
+                f"https://api.registry.platformio.org/v3/packages/{urllib.parse.quote(owner, '')}/{self._type(option)}/{urllib.parse.quote(name, '')}?version={urllib.parse.quote(version, '')}"
             ).json(),
         )
 
@@ -322,13 +356,13 @@ class Resolve:
         Returns:
             Data | None: Metadata for the requested package version, or `None` if no matching package is found.
         """
-        _type = self._type_api(option)
+        _type = self._type(option)
         search = typing.cast(Search, {"items": [], "limit": 50, "page": 0, "total": 1})
         while search["page"] * search["limit"] < search["total"]:
             search = typing.cast(
                 Search,
                 self._request(
-                    f"https://api.registry.platformio.org/v3/search?query=type:{_type}+name:{name}&limit={search['limit']!s}{f'&page={(search["page"] + 1)!s}' if search['page'] else ''}"
+                    f"https://api.registry.platformio.org/v3/search?query=type:{_type}+name:%22{urllib.parse.quote(name, '')}%22&limit={search['limit']!s}{f'&page={(search["page"] + 1)!s}' if search['page'] else ''}"
                 ).json(),
             )
             for item in search["items"]:
@@ -378,7 +412,7 @@ class Resolve:
                 return _file["system"]
         return "*"
 
-    def _type_api(self, option: models.Option | str) -> str:
+    def _type(self, option: models.Option | str) -> str:
         """
         Map a dependency option to its PlatformIO registry category.
 
@@ -390,18 +424,3 @@ class Resolve:
             models.Option.PLATFORM.value: "platform",
             models.Option.PLATFORM_PACKAGES.value: "tool",
         }.get(str(option), str(option))
-
-    def _type_html(self, type_: str) -> str:
-        """Map a PlatformIO registry type to its plural URL path segment.
-
-        Parameters:
-            type_ (str): Registry type to convert.
-
-        Returns:
-            str: The plural URL path segment, or `type_` when no mapping exists.
-        """
-        return {
-            "library": "libraries",
-            "platform": "platforms",
-            "tool": "tools",
-        }.get(type_, type_)
