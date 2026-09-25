@@ -241,20 +241,24 @@ class Piobot:
 
         The update is skipped when an equivalent branch or pull request already exists, or when the open pull request limit is reached. An older matching pull request is closed and its branch deleted when superseded.
         """
-        domain = "dependabot/platformio/"
-        path = "" if str(self.ini.parent) == "." else f"{self.ini.parent!s}"
-        prefix = f"{domain}{'' if len(path) == 0 else f'{path}/'}{result.package}"
+        root = "dependabot/platformio/"
+        path = str(self.ini.parent)
+        if path == ".":
+            path = ""
+        prefix = f"{root}{'' if len(path) == 0 else f'{path}/'}{result.package}"
         version = result.version_to
         for pattern, replacement in [
             (re.compile(r"[^a-zA-Z0-9/._-]"), "-"),
             (re.compile(r"-+"), "-"),
             (re.compile(r"\.{2,}"), "."),
+            (re.compile(r"/\.+"), "/"),
+            (re.compile(r"\.+/"), "/"),
             (re.compile(r"/{2,}"), "/"),
         ]:
             prefix = pattern.sub(replacement, prefix)
             version = pattern.sub(replacement, version)
-        prefix = f"{prefix.strip('/.-')}-"
-        head = f"{prefix}{version.strip('/.-')}".removesuffix(".lock")
+        prefix = f"{prefix.strip('/.-')}-".lower()
+        head = f"{prefix}{version.strip('/.-').removesuffix('.lock').lower()}"
         if head in self._git.heads:
             return
         repo = self._github.get_repo(self.repository)
@@ -262,7 +266,7 @@ class Piobot:
             return
         pulls = repo.get_pulls(base=self.ref, state="open")
         _pr = next((pr for pr in pulls if pr.head.ref.startswith(prefix)), None)
-        if _pr is None and sum(1 for pr in pulls if pr.head.ref.startswith(domain)) >= int(
+        if _pr is None and sum(1 for pr in pulls if pr.head.ref.startswith(root)) >= int(
             os.getenv(models.Inputs.OPEN_PULL_REQUESTS_LIMIT, models.Defaults.OPEN_PULL_REQUESTS_LIMIT)
         ):
             return
