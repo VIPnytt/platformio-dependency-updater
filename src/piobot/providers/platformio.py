@@ -208,6 +208,8 @@ class Resolve:
         if not data:
             return None
         candidate = self._parse(data, version)
+        if len(operator) != 0 and (candidate is None or packaging.version.Version(candidate["name"]) < version):
+            return f"{dependency.option} = {dependency.value}"
         if candidate is None:
             return None
         value = f"{data['owner']['username']}/{data['name']} @ {operator}{candidate['name']}"
