@@ -290,6 +290,8 @@ class Resolve:
             for _operator in ("^", "~", ">="):
                 if version.startswith(_operator):
                     return _operator, version.removeprefix(_operator)
+            if _operator == "==":
+                return "", version.removeprefix(_operator)
         return "", version
 
     def _parse(self, data: Data, version: packaging.version.Version) -> Version | None:
