@@ -256,7 +256,7 @@ class Piobot:
         version = result.version_to
         for pattern, replacement in [
             (re.compile(r"[^a-zA-Z0-9/._+-]"), "-"),
-            (re.compile(r"\.lock(?=/|$)"), "-lock"),
+            (re.compile(r"(?i)\.lock(?=/|$)"), "-lock"),
             (re.compile(r"-+"), "-"),
             (re.compile(r"\.{2,}"), "."),
             (re.compile(r"/\.+"), "/"),
