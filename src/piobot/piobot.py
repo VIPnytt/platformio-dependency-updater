@@ -239,7 +239,14 @@ class Piobot:
             dependency (models.Dependency): Dependency entry to update.
             result (models.Result): Update details, including package, versions, replacement value, and pull request body.
 
-        The update is skipped when an equivalent branch or pull request already exists, or when the open pull request limit is reached. An older matching pull request is closed and its branch deleted when superseded.
+        The branch name is lowercased and normalized from the project directory, package, and target version. Characters outside letters, digits, and `/._+-` become hyphens; a trailing `.lock` is removed from the version.
+
+        The update is skipped when a branch or pull request already uses the generated head, or when the open pull request limit is reached without a matching open pull request for the same directory and package. After a new pull request is created, a matching open pull request is closed and its branch deleted.
+
+        Git, GitHub API, and file operation errors also propagate to the caller.
+
+        Raises:
+            ValueError: If the open pull request limit is not an integer when checked.
         """
         root = "dependabot/platformio/"
         path = str(self.ini.parent)
