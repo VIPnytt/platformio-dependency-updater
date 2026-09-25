@@ -256,6 +256,7 @@ class Piobot:
         version = result.version_to
         for pattern, replacement in [
             (re.compile(r"[^a-zA-Z0-9/._+-]"), "-"),
+            (re.compile(r"\.lock(?=/|$)"), "-lock"),
             (re.compile(r"-+"), "-"),
             (re.compile(r"\.{2,}"), "."),
             (re.compile(r"/\.+"), "/"),
@@ -265,7 +266,7 @@ class Piobot:
             prefix = pattern.sub(replacement, prefix)
             version = pattern.sub(replacement, version)
         prefix = f"{prefix.strip('/.-')}-".lower()
-        head = f"{prefix}{version.strip('/.-').lower().removesuffix('.lock')}"
+        head = f"{prefix}{version.strip('/.-').lower()}"
         if head in self._git.heads:
             return
         repo = self._github.get_repo(self.repository)
