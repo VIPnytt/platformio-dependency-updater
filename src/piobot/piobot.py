@@ -248,7 +248,7 @@ class Piobot:
         prefix = f"{root}{'' if len(path) == 0 else f'{path}/'}{result.package}"
         version = result.version_to
         for pattern, replacement in [
-            (re.compile(r"[^a-zA-Z0-9/._-]"), "-"),
+            (re.compile(r"[^a-zA-Z0-9/._+-]"), "-"),
             (re.compile(r"-+"), "-"),
             (re.compile(r"\.{2,}"), "."),
             (re.compile(r"/\.+"), "/"),
