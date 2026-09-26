@@ -107,7 +107,7 @@ class Piobot:
         resolve = arduino.Resolve()
         for dependency in self.dependencies.copy():
             try:
-                self._handle(dependency, resolve.library(dependency))
+                self._handle("arduino", dependency, resolve.library(dependency))
             except Exception as e:  # ruff:ignore[BLE001]
                 print(f"::warning Arduino::{e}")
 
@@ -125,7 +125,7 @@ class Piobot:
         }.items():
             for dependency in self.dependencies.copy():
                 try:
-                    self._handle(dependency, handler(dependency))
+                    self._handle("bitbucket", dependency, handler(dependency))
                 except Exception as e:  # ruff:ignore[BLE001]
                     print(f"::warning Bitbucket {description}::{e}")
             if len(self.dependencies) == 0:
@@ -140,7 +140,7 @@ class Piobot:
         }.items():
             for dependency in self.dependencies.copy():
                 try:
-                    self._handle(dependency, handler(dependency))
+                    self._handle("espressif", dependency, handler(dependency))
                 except Exception as e:  # ruff:ignore[BLE001]
                     print(f"::warning Espressif Registry {description}::{e}")
             if len(self.dependencies) == 0:
@@ -170,7 +170,7 @@ class Piobot:
         }.items():
             for dependency in self.dependencies.copy():
                 try:
-                    self._handle(dependency, handler(dependency))
+                    self._handle("github", dependency, handler(dependency))
                 except Exception as e:  # ruff:ignore[BLE001]
                     print(f"::warning GitHub {description}::{e}")
             if len(self.dependencies) == 0:
@@ -187,7 +187,7 @@ class Piobot:
         }.items():
             for dependency in self.dependencies.copy():
                 try:
-                    self._handle(dependency, handler(dependency))
+                    self._handle("gitlab", dependency, handler(dependency))
                 except Exception as e:  # ruff:ignore[BLE001]
                     print(f"::warning GitLab {description}::{e}")
             if len(self.dependencies) == 0:
@@ -208,13 +208,13 @@ class Piobot:
         }.items():
             for dependency in self.dependencies.copy():
                 try:
-                    self._handle(dependency, handler(dependency))
+                    self._handle("registry", dependency, handler(dependency))
                 except Exception as e:  # ruff:ignore[BLE001]
                     print(f"::warning PlatformIO Registry {description}::{e}")
             if len(self.dependencies) == 0:
                 break
 
-    def _handle(self, dependency: models.Dependency, result: models.Result | str | None) -> None:
+    def _handle(self, provider: str, dependency: models.Dependency, result: models.Result | str | None) -> None:
         """
         Process a dependency resolution result and remove handled dependencies from tracking.
 
@@ -226,12 +226,12 @@ class Piobot:
             print(f"::debug::{result}")
         elif isinstance(result, models.Result):
             print(f"::notice file={self.ini!s},line={dependency.line},title=Update available::{result.value}")
-            self._bump(dependency, result)
+            self._bump(provider, dependency, result)
         else:
             return
         self.dependencies.remove(dependency)
 
-    def _bump(self, dependency: models.Dependency, result: models.Result) -> None:
+    def _bump(self, provider: str, dependency: models.Dependency, result: models.Result) -> None:
         """
         Create and publish a dependency update branch and pull request.
 
@@ -293,7 +293,7 @@ class Piobot:
             title=f"Bump {result.package} from {result.version_from} to {result.version_to}{'' if len(path) == 0 else f' in /{path}'}",
         )
         for label in repo.get_labels():
-            if label.name in self.labels:
+            if label.name in self.labels or label.name == f"platformio:{provider}":
                 pr.add_to_labels(label)
         if _pr is not None:
             _pr.create_issue_comment(f"Superseded by #{pr.number}.")
