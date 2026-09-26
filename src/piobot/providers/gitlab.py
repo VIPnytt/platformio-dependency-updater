@@ -60,35 +60,54 @@ class Tag(typing.TypedDict):
 
 class Resolve:
     cooldown: datetime.timedelta
-    _tag: re.Pattern[str]
-    _commit: re.Pattern[str]
+    _archive_commit: re.Pattern[str]
+    _archive_tag: re.Pattern[str]
+    _git_commit: re.Pattern[str]
+    _git_tag: re.Pattern[str]
 
     def __init__(self, cooldown: datetime.timedelta) -> None:
         """
         Initialize a resolver with the minimum age required for releases and tags.
 
         Parameters:
-            cooldown (datetime.timedelta): Minimum age a release or tag must reach before it can be selected.
+            cooldown (datetime.timedelta): Minimum age, inclusive, measured from the later of release creation
+                and publication, or from the commit creation time for tags.
         """
         self.cooldown = cooldown
-        self._commit = re.compile(
+        self._archive_commit = re.compile(
             r"^(?:(?P<package>(?:[^/\s]+/)?[^/\s]+)?\s*@\s*)?https://gitlab\.com/(?P<owner>[^/\s]+)/(?P<repo>[^/\s]+)/-/archive/(?P<commit>[0-9a-f]{40})/[^/\s]+\.(?P<variant>tar|tar\.gz|zip)\s*;\s*(?P<tag>\S+)$"
         )
-        self._tag = re.compile(
+        self._archive_tag = re.compile(
             r"^(?:(?P<package>(?:[^/\s]+/)?[^/\s]+)?\s*@\s*)?https://gitlab\.com/(?P<owner>[^/\s]+)/(?P<repo>[^/\s]+)/-/archive/(?P<tag>[^/\s]+)/[^/\s]+\.(?P<variant>tar|tar\.gz|zip)(?:\s*;.*)?$"
         )
+        self._git_commit = re.compile(
+            r"^(?:(?P<package>(?:[^/\s]+/)?[^/\s]+)?\s*@\s*)?(?P<variant>git|git\+https|git\+ssh|https)://gitlab\.com/(?P<owner>[^/\s]+)/(?P<repo>[^/\s]+)\.git#(?P<commit>[0-9a-f]{40})\s*;\s*(?P<tag>\S+)$"
+        )
+        self._git_tag = re.compile(
+            r"^(?:(?P<package>(?:[^/\s]+/)?[^/\s]+)?\s*@\s*)?(?P<variant>git|git\+https|git\+ssh|https)://gitlab\.com/(?P<owner>[^/\s]+)/(?P<repo>[^/\s]+)\.git#(?P<tag>[^/\s]+)(?:\s*;.*)?$"
+        )
 
-    def release_tag(self, dependency: models.Dependency) -> models.Result | str | None:
+    def release_tag_archive(self, dependency: models.Dependency) -> models.Result | str | None:
         """
-        Resolve a tag-based GitLab dependency to the latest eligible release asset.
+        Resolve a tag-based GitLab dependency to an eligible release asset.
+
+        Selects the first eligible newer version in API order, or the first eligible version otherwise.
+        Candidates must meet the cooldown; prereleases are eligible only if the current version is a prerelease.
+
+        HTTP, connection, timeout, and malformed API response errors propagate. Invalid candidate versions are skipped.
 
         Parameters:
                 dependency (models.Dependency): Dependency expression containing a GitLab tag archive URL.
 
         Returns:
-                models.Result | str | None: An update result or assignment string when a matching release asset is found; otherwise, `None`.
+                models.Result: Update details when the selected release has a newer version and matching archive format.
+                str: Assignment string when the selected release is not newer and has a matching archive format.
+                None: If the URL is unsupported, no eligible release exists, or that release lacks the archive format.
+
+        Raises:
+            packaging.version.InvalidVersion: If the dependency's current tag is not a valid version.
         """
-        match = typing.cast(MatchTag | None, self._tag.fullmatch(dependency.value))
+        match = typing.cast(MatchTag | None, self._archive_tag.fullmatch(dependency.value))
         if not match:
             return None
         version = packaging.version.Version(match["tag"])
@@ -121,17 +140,76 @@ class Resolve:
             )
         return None
 
-    def release_tag_commit(self, dependency: models.Dependency) -> models.Result | str | None:
+    def release_tag_git(self, dependency: models.Dependency) -> models.Result | str | None:
         """
-        Resolve a commit-archive dependency to the next matching GitLab release.
+        Resolve a GitLab Git dependency to an eligible release tag.
+
+        Selects the first eligible newer version in API order, or the first eligible version otherwise.
+        Candidates must meet the cooldown; prereleases are eligible only if the current version is a prerelease.
+        Preserves the package alias and URL scheme (`git`, `git+https`, `git+ssh`, or `https`).
+
+        HTTP, connection, timeout, and malformed API response errors propagate. Invalid candidate versions are skipped.
 
         Parameters:
-                dependency (models.Dependency): Dependency whose commit-archive value is resolved.
+            dependency (models.Dependency): GitLab.com `.git#<tag>` URL whose fragment supplies the current version.
 
         Returns:
-                models.Result | str | None: An update result or assignment string when a matching release asset is found; otherwise, None.
+            models.Result: Update details when the selected release has a newer version.
+            str: Assignment string when the selected release is not newer.
+            None: If the URL is unsupported or no eligible release is found.
+
+        Raises:
+            packaging.version.InvalidVersion: If the dependency's current tag is not a valid version.
         """
-        match = typing.cast(MatchCommit | None, self._commit.fullmatch(dependency.value))
+        match = typing.cast(MatchTag | None, self._git_tag.fullmatch(dependency.value))
+        if not match:
+            return None
+        version = packaging.version.Version(match["tag"])
+        release = self._request_release(match["owner"], match["repo"], version)
+        if release is None:
+            return None
+        owner, repo = self._parse_link(release["_links"]["self"])
+        value = f"{'' if match['package'] is None else f'{match["package"]} @ '}{match['variant']}://gitlab.com/{owner}/{repo}.git#{release['tag_name']} ; {release['tag_name']}"
+        return (
+            models.Result(
+                body="\n".join(
+                    [
+                        f"Bumps [{owner}/{repo}](https://gitlab.com/{owner}/{repo}) from {match['tag']} to {release['tag_name']}.",
+                        f"- [Release notes]({release['_links']['self']})",
+                        f"- [Compare changes](https://gitlab.com/{owner}/{repo}/-/compare/{match['tag']}..{release['tag_name']})",
+                    ]
+                ),
+                package=f"{owner}/{repo}",
+                value=value,
+                version_from=match["tag"].removeprefix("v"),
+                version_to=release["tag_name"].removeprefix("v"),
+            )
+            if packaging.version.Version(release["tag_name"]) > version
+            else f"{dependency.option} = {value}"
+        )
+
+    def release_tag_commit_archive(self, dependency: models.Dependency) -> models.Result | str | None:
+        """
+        Resolve a commit-archive dependency to an eligible GitLab release commit.
+
+        Selects the first eligible newer version in API order, or the first eligible version otherwise.
+        Candidates must meet the cooldown; prereleases are eligible only if the current version is a prerelease.
+
+        HTTP, connection, timeout, and malformed API response errors propagate. Invalid candidate versions are skipped.
+
+        Parameters:
+                dependency (models.Dependency): Dependency with a 40-character lowercase commit hash in its archive URL
+                    and a required `; tag` suffix supplying the current version.
+
+        Returns:
+                models.Result: Update details when the selected release has a newer version and matching archive format.
+                str: Assignment string when the selected release is not newer and has a matching archive format.
+                None: If the URL is unsupported, no eligible release exists, or that release lacks the archive format.
+
+        Raises:
+            packaging.version.InvalidVersion: If the dependency's current tag is not a valid version.
+        """
+        match = typing.cast(MatchCommit | None, self._archive_commit.fullmatch(dependency.value))
         if not match:
             return None
         version = packaging.version.Version(match["tag"])
@@ -162,19 +240,76 @@ class Resolve:
             )
         return None
 
-    def tag(self, dependency: models.Dependency) -> models.Result | str | None:
+    def release_tag_commit_git(self, dependency: models.Dependency) -> models.Result | str | None:
+        """
+        Resolve a GitLab Git dependency to an eligible release commit.
+
+        Selects the first eligible newer version in API order, or the first eligible version otherwise.
+        Candidates must meet the cooldown; prereleases are eligible only if the current version is a prerelease.
+        Preserves the package alias and URL scheme (`git`, `git+https`, `git+ssh`, or `https`).
+
+        HTTP, connection, timeout, and malformed API response errors propagate. Invalid candidate versions are skipped.
+
+        Parameters:
+            dependency (models.Dependency): GitLab.com `.git#<commit>` URL with a 40-character lowercase commit hash
+                and a required `; tag` suffix supplying the current version.
+
+        Returns:
+            models.Result: Update details when the selected release has a newer version.
+            str: Assignment string when the selected release is not newer.
+            None: If the URL is unsupported or no eligible release is found.
+
+        Raises:
+            packaging.version.InvalidVersion: If the dependency's current tag is not a valid version.
+        """
+        match = typing.cast(MatchCommit | None, self._git_commit.fullmatch(dependency.value))
+        if not match:
+            return None
+        version = packaging.version.Version(match["tag"])
+        release = self._request_release(match["owner"], match["repo"], version)
+        if release is None:
+            return None
+        owner, repo = self._parse_link(release["_links"]["self"])
+        value = f"{'' if match['package'] is None else f'{match["package"]} @ '}{match['variant']}://gitlab.com/{owner}/{repo}.git#{release['commit']['id']} ; {release['tag_name']}"
+        return (
+            models.Result(
+                body="\n".join(
+                    [
+                        f"Bumps [{owner}/{repo}](https://gitlab.com/{owner}/{repo}) from {match['tag']} to {release['tag_name']}.",
+                        f"- [Release notes]({release['_links']['self']})",
+                        f"- [Compare changes](https://gitlab.com/{owner}/{repo}/-/compare/{match['commit']}..{release['commit']['id']})",
+                    ]
+                ),
+                package=f"{owner}/{repo}",
+                value=value,
+                version_from=match["tag"].removeprefix("v"),
+                version_to=release["tag_name"].removeprefix("v"),
+            )
+            if packaging.version.Version(release["tag_name"]) > version
+            else f"{dependency.option} = {value}"
+        )
+
+    def tag_archive(self, dependency: models.Dependency) -> models.Result | str | None:
         """
         Resolve a tag-based GitLab dependency to an eligible tag archive.
+
+        Selects the first eligible newer version in API order, or the first eligible version otherwise.
+        Candidates must meet the cooldown; prereleases are eligible only if the current version is a prerelease.
+
+        HTTP, connection, timeout, and malformed API response errors propagate. Invalid candidate versions are skipped.
 
         Parameters:
             dependency (models.Dependency): Dependency expression containing a GitLab tag archive reference.
 
         Returns:
             models.Result: Update metadata when a newer eligible tag is available.
-            str: Dependency assignment using the resolved tag.
+            str: Dependency assignment when the resolved tag is not newer.
             None: If the dependency format is unsupported or no eligible tag is found.
+
+        Raises:
+            packaging.version.InvalidVersion: If the dependency's current tag is not a valid version.
         """
-        match = typing.cast(MatchTag | None, self._tag.fullmatch(dependency.value))
+        match = typing.cast(MatchTag | None, self._archive_tag.fullmatch(dependency.value))
         if not match:
             return None
         version = packaging.version.Version(match["tag"])
@@ -201,19 +336,76 @@ class Resolve:
             else f"{dependency.option} = {value}"
         )
 
-    def tag_commit(self, dependency: models.Dependency) -> models.Result | str | None:
+    def tag_git(self, dependency: models.Dependency) -> models.Result | str | None:
         """
-        Resolve a commit archive dependency to the latest eligible GitLab tag.
+        Resolve a GitLab Git dependency to an eligible tag.
+
+        Selects the first eligible newer version in API order, or the first eligible version otherwise.
+        Candidates must meet the cooldown; prereleases are eligible only if the current version is a prerelease.
+        Preserves the package alias and URL scheme (`git`, `git+https`, `git+ssh`, or `https`).
+
+        HTTP, connection, timeout, and malformed API response errors propagate. Invalid candidate versions are skipped.
 
         Parameters:
-            dependency (models.Dependency): Dependency expression containing a commit archive URL and version tag.
+            dependency (models.Dependency): GitLab.com `.git#<tag>` URL whose fragment supplies the current version.
+
+        Returns:
+            models.Result: Update details when the selected tag has a newer version.
+            str: Assignment string when the selected tag is not newer.
+            None: If the URL is unsupported or no eligible tag is found.
+
+        Raises:
+            packaging.version.InvalidVersion: If the dependency's current tag is not a valid version.
+        """
+        match = typing.cast(MatchTag | None, self._git_tag.fullmatch(dependency.value))
+        if not match:
+            return None
+        version = packaging.version.Version(match["tag"])
+        tag = self._request_tag(match["owner"], match["repo"], version)
+        if tag is None:
+            return None
+        owner, repo = self._parse_link(tag["commit"]["web_url"])
+        value = f"{'' if match['package'] is None else f'{match["package"]} @ '}{match['variant']}://gitlab.com/{owner}/{repo}.git#{tag['name']} ; {tag['name']}"
+        return (
+            models.Result(
+                body="\n".join(
+                    [
+                        f"Bumps [{owner}/{repo}](https://gitlab.com/{owner}/{repo}) from {match['tag']} to {tag['name']}.",
+                        f"- [Tag](https://gitlab.com/{owner}/{repo}/-/tags/{tag['name']})",
+                        f"- [Compare changes](https://gitlab.com/{owner}/{repo}/-/compare/{match['tag']}..{tag['name']})",
+                    ]
+                ),
+                package=f"{owner}/{repo}",
+                value=value,
+                version_from=match["tag"].removeprefix("v"),
+                version_to=tag["name"].removeprefix("v"),
+            )
+            if packaging.version.Version(tag["name"]) > version
+            else f"{dependency.option} = {value}"
+        )
+
+    def tag_commit_archive(self, dependency: models.Dependency) -> models.Result | str | None:
+        """
+        Resolve a commit archive dependency to an eligible GitLab tag commit.
+
+        Selects the first eligible newer version in API order, or the first eligible version otherwise.
+        Candidates must meet the cooldown; prereleases are eligible only if the current version is a prerelease.
+
+        HTTP, connection, timeout, and malformed API response errors propagate. Invalid candidate versions are skipped.
+
+        Parameters:
+            dependency (models.Dependency): Dependency with a 40-character lowercase commit hash in its archive URL
+                and a required `; tag` suffix supplying the current version.
 
         Returns:
             models.Result: Updated dependency details when a newer tag is available.
             str: Assignment string when the resolved tag is not newer.
             None: If the dependency does not match or no eligible tag is found.
+
+        Raises:
+            packaging.version.InvalidVersion: If the dependency's current tag is not a valid version.
         """
-        match = typing.cast(MatchCommit | None, self._commit.fullmatch(dependency.value))
+        match = typing.cast(MatchCommit | None, self._archive_commit.fullmatch(dependency.value))
         if not match:
             return None
         version = packaging.version.Version(match["tag"])
@@ -222,6 +414,55 @@ class Resolve:
             return None
         owner, repo = self._parse_link(tag["commit"]["web_url"])
         value = f"{'' if match['package'] is None else f'{match["package"]} @ '}https://gitlab.com/{owner}/{repo}/-/archive/{tag['commit']['id']}/{repo}-{tag['commit']['id']}.{match['variant']} ; {tag['name']}"
+        return (
+            models.Result(
+                body="\n".join(
+                    [
+                        f"Bumps [{owner}/{repo}](https://gitlab.com/{owner}/{repo}) from {match['tag']} to {tag['name']}.",
+                        f"- [Tag](https://gitlab.com/{owner}/{repo}/-/tags/{tag['name']})",
+                        f"- [Compare changes](https://gitlab.com/{owner}/{repo}/-/compare/{match['commit']}..{tag['commit']['id']})",
+                    ]
+                ),
+                package=f"{owner}/{repo}",
+                value=value,
+                version_from=match["tag"].removeprefix("v"),
+                version_to=tag["name"].removeprefix("v"),
+            )
+            if packaging.version.Version(tag["name"]) > version
+            else f"{dependency.option} = {value}"
+        )
+
+    def tag_commit_git(self, dependency: models.Dependency) -> models.Result | str | None:
+        """
+        Resolve a GitLab Git dependency to an eligible tag commit.
+
+        Selects the first eligible newer version in API order, or the first eligible version otherwise.
+        Candidates must meet the cooldown; prereleases are eligible only if the current version is a prerelease.
+        Preserves the package alias and URL scheme (`git`, `git+https`, `git+ssh`, or `https`).
+
+        HTTP, connection, timeout, and malformed API response errors propagate. Invalid candidate versions are skipped.
+
+        Parameters:
+            dependency (models.Dependency): GitLab.com `.git#<commit>` URL with a 40-character lowercase commit hash
+                and a required `; tag` suffix supplying the current version.
+
+        Returns:
+            models.Result: Update details when the selected tag has a newer version.
+            str: Assignment string when the selected tag is not newer.
+            None: If the URL is unsupported or no eligible tag is found.
+
+        Raises:
+            packaging.version.InvalidVersion: If the dependency's current tag is not a valid version.
+        """
+        match = typing.cast(MatchCommit | None, self._git_commit.fullmatch(dependency.value))
+        if not match:
+            return None
+        version = packaging.version.Version(match["tag"])
+        tag = self._request_tag(match["owner"], match["repo"], version)
+        if tag is None:
+            return None
+        owner, repo = self._parse_link(tag["commit"]["web_url"])
+        value = f"{'' if match['package'] is None else f'{match["package"]} @ '}{match['variant']}://gitlab.com/{owner}/{repo}.git#{tag['commit']['id']} ; {tag['name']}"
         return (
             models.Result(
                 body="\n".join(
