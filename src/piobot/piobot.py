@@ -239,9 +239,11 @@ class Piobot:
             dependency (models.Dependency): Dependency entry to update.
             result (models.Result): Update details, including package, versions, replacement value, and pull request body.
 
-        The branch name is lowercased and normalized from the project directory, package, and target version. Characters outside letters, digits, and `/._+-` become hyphens; a trailing `.lock` is removed from the version.
+        The branch name is lowercased and normalized from the project directory, package, and target version. Characters outside letters, digits, and `/._+-` become hyphens; `.lock` suffixes on path components become `-lock`, case-insensitively.
 
-        The update is skipped when a branch or pull request already uses the generated head, or when the open pull request limit is reached without a matching open pull request for the same directory and package. After a new pull request is created, a matching open pull request is closed and its branch deleted.
+        The update is skipped when a local branch already uses the generated head or a pull request in any state uses it for the configured base. The open pull request limit counts only `github-actions[bot]` pull requests for that base whose heads start with `dependabot/platformio/`. At or above the limit, an update requires an open bot-authored pull request whose head starts with the normalized directory/package prefix.
+
+        Publishing switches to the new branch, resets the index and working tree to the configured base, and replaces every occurrence of `dependency.value` throughout the configuration file with `result.value`. It commits and pushes the change, creates a pull request, and applies configured labels that exist in the repository. All previously open pull requests for that base with the matching head prefix receive a superseded comment; only those authored by `github-actions[bot]` are closed and have their branches deleted.
 
         Git, GitHub API, and file operation errors also propagate to the caller.
 
@@ -270,13 +272,13 @@ class Piobot:
         if head in self._git.heads:
             return
         repo = self._github.get_repo(self.repository)
-        if repo.get_pulls(base=self.ref, head=f"{repo.owner.login}:{head}", state="all").totalCount > 0:
+        if repo.get_pulls(base=self.ref, head=f"{repo.owner.login}:{head}", state="all").totalCount != 0:
             return
         pulls = repo.get_pulls(base=self.ref, state="open")
-        _pr = next((pr for pr in pulls if pr.head.ref.startswith(prefix)), None)
-        if _pr is None and sum(1 for pr in pulls if pr.head.ref.startswith(root)) >= int(
-            os.getenv(models.Inputs.OPEN_PULL_REQUESTS_LIMIT, models.Defaults.OPEN_PULL_REQUESTS_LIMIT)
-        ):
+        matching = [pr for pr in pulls if pr.head.ref.startswith(prefix)]
+        if sum(1 for pr in matching if pr.user.login == "github-actions[bot]") == 0 and sum(
+            1 for pr in pulls if pr.head.ref.startswith(root) and pr.user.login == "github-actions[bot]"
+        ) >= int(os.getenv(models.Inputs.OPEN_PULL_REQUESTS_LIMIT, models.Defaults.OPEN_PULL_REQUESTS_LIMIT)):
             return
         self._git.head.set_reference(self._git.create_head(head, self.ref))
         self._git.head.reset(index=True, working_tree=True)
@@ -295,10 +297,11 @@ class Piobot:
         for label in repo.get_labels():
             if label.name in self.labels or label.name == f"platformio:{provider}":
                 pr.add_to_labels(label)
-        if _pr is not None:
+        for _pr in matching:
             _pr.create_issue_comment(f"Superseded by #{pr.number}.")
-            _pr.edit(state="closed")
-            _pr.delete_branch()
+            if _pr.user.login == "github-actions[bot]":
+                _pr.edit(state="closed")
+                _pr.delete_branch()
 
     def __del__(self) -> None:
         """Report unresolved dependencies using GitHub Actions error annotations."""
