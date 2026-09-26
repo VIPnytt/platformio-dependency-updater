@@ -273,8 +273,8 @@ class Piobot:
         if repo.get_pulls(base=self.ref, head=f"{repo.owner.login}:{head}", state="all").totalCount != 0:
             return
         pulls = repo.get_pulls(base=self.ref, state="open")
-        _pr = next((pr for pr in pulls if pr.head.ref.startswith(prefix)), None)
-        if _pr is None and sum(
+        matching = [pr for pr in pulls if pr.head.ref.startswith(prefix)]
+        if sum(1 for pr in matching if pr.user.login == "github-actions[bot]") == 0 and sum(
             1 for pr in pulls if pr.head.ref.startswith(root) and pr.user.login == "github-actions[bot]"
         ) >= int(os.getenv(models.Inputs.OPEN_PULL_REQUESTS_LIMIT, models.Defaults.OPEN_PULL_REQUESTS_LIMIT)):
             return
@@ -295,7 +295,7 @@ class Piobot:
         for label in repo.get_labels():
             if label.name in self.labels:
                 pr.add_to_labels(label)
-        if _pr is not None:
+        for _pr in matching:
             _pr.create_issue_comment(f"Superseded by #{pr.number}.")
             if _pr.user.login == "github-actions[bot]":
                 _pr.edit(state="closed")
