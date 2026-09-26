@@ -177,7 +177,12 @@ class Piobot:
                 break
 
     def gitlab(self) -> None:
-        """Resolve dependencies using GitLab release and tag information."""
+        """
+        Resolve dependencies using GitLab release and tag information.
+
+        Process archive and Git URLs, publishing dependency updates when applicable and removing handled dependencies
+        from tracking. Exceptions from individual resolution or update attempts are caught so processing can continue.
+        """
         resolve = gitlab.Resolve(self.cooldown)
         for description, handler in {
             "release tag commit archive": resolve.release_tag_commit_archive,
