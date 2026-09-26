@@ -239,9 +239,11 @@ class Piobot:
             dependency (models.Dependency): Dependency entry to update.
             result (models.Result): Update details, including package, versions, replacement value, and pull request body.
 
-        The branch name is lowercased and normalized from the project directory, package, and target version. Characters outside letters, digits, and `/._+-` become hyphens; a trailing `.lock` is removed from the version.
+        The branch name is lowercased and normalized from the project directory, package, and target version. Characters outside letters, digits, and `/._+-` become hyphens; `.lock` suffixes on path components become `-lock`, case-insensitively.
 
-        The update is skipped when a branch or pull request already uses the generated head, or when the open pull request limit is reached without a matching open pull request for the same directory and package. After a new pull request is created, a matching open pull request is closed and its branch deleted.
+        The update is skipped when a local branch already uses the generated head or a pull request in any state uses it for the configured base. The open pull request limit counts only `github-actions[bot]` pull requests for that base whose heads start with `dependabot/platformio/`. At or above the limit, an update requires an open bot-authored pull request whose head starts with the normalized directory/package prefix.
+
+        Publishing switches to the new branch, resets the index and working tree to the configured base, and replaces every occurrence of `dependency.value` throughout the configuration file with `result.value`. It commits and pushes the change, creates a pull request, and applies configured labels that exist in the repository. All previously open pull requests for that base with the matching head prefix receive a superseded comment; only those authored by `github-actions[bot]` are closed and have their branches deleted.
 
         Git, GitHub API, and file operation errors also propagate to the caller.
 
