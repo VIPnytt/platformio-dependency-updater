@@ -270,13 +270,13 @@ class Piobot:
         if head in self._git.heads:
             return
         repo = self._github.get_repo(self.repository)
-        if repo.get_pulls(base=self.ref, head=f"{repo.owner.login}:{head}", state="all").totalCount > 0:
+        if repo.get_pulls(base=self.ref, head=f"{repo.owner.login}:{head}", state="all").totalCount != 0:
             return
         pulls = repo.get_pulls(base=self.ref, state="open")
         _pr = next((pr for pr in pulls if pr.head.ref.startswith(prefix)), None)
-        if _pr is None and sum(1 for pr in pulls if pr.head.ref.startswith(root)) >= int(
-            os.getenv(models.Inputs.OPEN_PULL_REQUESTS_LIMIT, models.Defaults.OPEN_PULL_REQUESTS_LIMIT)
-        ):
+        if _pr is None and sum(
+            1 for pr in pulls if pr.head.ref.startswith(root) and pr.user.login == "github-actions[bot]"
+        ) >= int(os.getenv(models.Inputs.OPEN_PULL_REQUESTS_LIMIT, models.Defaults.OPEN_PULL_REQUESTS_LIMIT)):
             return
         self._git.head.set_reference(self._git.create_head(head, self.ref))
         self._git.head.reset(index=True, working_tree=True)
@@ -297,8 +297,9 @@ class Piobot:
                 pr.add_to_labels(label)
         if _pr is not None:
             _pr.create_issue_comment(f"Superseded by #{pr.number}.")
-            _pr.edit(state="closed")
-            _pr.delete_branch()
+            if _pr.user.login == "github-actions[bot]":
+                _pr.edit(state="closed")
+                _pr.delete_branch()
 
     def __del__(self) -> None:
         """Report unresolved dependencies using GitHub Actions error annotations."""
