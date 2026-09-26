@@ -138,28 +138,24 @@ class Resolve:
         if release is None:
             return None
         owner, repo = self._parse_link(release["_links"]["self"])
-        for source in release["assets"]["sources"]:
-            if source["format"] != match["variant"]:
-                continue
-            value = f"{'' if match['package'] is None else f'{match["package"]} @ '}{match['variant']}://gitlab.com/{owner}/{repo}.git#{release['tag_name']} ; {release['tag_name']}"
-            return (
-                models.Result(
-                    body="\n".join(
-                        [
-                            f"Bumps [{owner}/{repo}](https://gitlab.com/{owner}/{repo}) from {match['tag']} to {release['tag_name']}.",
-                            f"- [Release notes]({release['_links']['self']})",
-                            f"- [Compare changes](https://gitlab.com/{owner}/{repo}/-/compare/{match['tag']}..{release['tag_name']})",
-                        ]
-                    ),
-                    package=f"{owner}/{repo}",
-                    value=value,
-                    version_from=match["tag"].removeprefix("v"),
-                    version_to=release["tag_name"].removeprefix("v"),
-                )
-                if packaging.version.Version(release["tag_name"]) > version
-                else f"{dependency.option} = {value}"
+        value = f"{'' if match['package'] is None else f'{match["package"]} @ '}{match['variant']}://gitlab.com/{owner}/{repo}.git#{release['tag_name']} ; {release['tag_name']}"
+        return (
+            models.Result(
+                body="\n".join(
+                    [
+                        f"Bumps [{owner}/{repo}](https://gitlab.com/{owner}/{repo}) from {match['tag']} to {release['tag_name']}.",
+                        f"- [Release notes]({release['_links']['self']})",
+                        f"- [Compare changes](https://gitlab.com/{owner}/{repo}/-/compare/{match['tag']}..{release['tag_name']})",
+                    ]
+                ),
+                package=f"{owner}/{repo}",
+                value=value,
+                version_from=match["tag"].removeprefix("v"),
+                version_to=release["tag_name"].removeprefix("v"),
             )
-        return None
+            if packaging.version.Version(release["tag_name"]) > version
+            else f"{dependency.option} = {value}"
+        )
 
     def release_tag_commit_archive(self, dependency: models.Dependency) -> models.Result | str | None:
         """
@@ -211,28 +207,24 @@ class Resolve:
         if release is None:
             return None
         owner, repo = self._parse_link(release["_links"]["self"])
-        for source in release["assets"]["sources"]:
-            if source["format"] != match["variant"]:
-                continue
-            value = f"{'' if match['package'] is None else f'{match["package"]} @ '}{match['variant']}://gitlab.com/{owner}/{repo}.git#{release['commit']['id']} ; {release['tag_name']}"
-            return (
-                models.Result(
-                    body="\n".join(
-                        [
-                            f"Bumps [{owner}/{repo}](https://gitlab.com/{owner}/{repo}) from {match['tag']} to {release['tag_name']}.",
-                            f"- [Release notes]({release['_links']['self']})",
-                            f"- [Compare changes](https://gitlab.com/{owner}/{repo}/-/compare/{match['commit']}..{release['commit']['id']})",
-                        ]
-                    ),
-                    package=f"{owner}/{repo}",
-                    value=value,
-                    version_from=match["tag"].removeprefix("v"),
-                    version_to=release["tag_name"].removeprefix("v"),
-                )
-                if packaging.version.Version(release["tag_name"]) > version
-                else f"{dependency.option} = {value}"
+        value = f"{'' if match['package'] is None else f'{match["package"]} @ '}{match['variant']}://gitlab.com/{owner}/{repo}.git#{release['commit']['id']} ; {release['tag_name']}"
+        return (
+            models.Result(
+                body="\n".join(
+                    [
+                        f"Bumps [{owner}/{repo}](https://gitlab.com/{owner}/{repo}) from {match['tag']} to {release['tag_name']}.",
+                        f"- [Release notes]({release['_links']['self']})",
+                        f"- [Compare changes](https://gitlab.com/{owner}/{repo}/-/compare/{match['commit']}..{release['commit']['id']})",
+                    ]
+                ),
+                package=f"{owner}/{repo}",
+                value=value,
+                version_from=match["tag"].removeprefix("v"),
+                version_to=release["tag_name"].removeprefix("v"),
             )
-        return None
+            if packaging.version.Version(release["tag_name"]) > version
+            else f"{dependency.option} = {value}"
+        )
 
     def tag_archive(self, dependency: models.Dependency) -> models.Result | str | None:
         """
