@@ -239,17 +239,42 @@ class Piobot:
             dependency (models.Dependency): Dependency entry to update.
             result (models.Result): Update details, including package, versions, replacement value, and pull request body.
 
-        The update is skipped when an equivalent branch or pull request already exists, or when the open pull request limit is reached. An older matching pull request is closed and its branch deleted when superseded.
+        The branch name is lowercased and normalized from the project directory, package, and target version. Characters outside letters, digits, and `/._+-` become hyphens; a trailing `.lock` is removed from the version.
+
+        The update is skipped when a branch or pull request already uses the generated head, or when the open pull request limit is reached without a matching open pull request for the same directory and package. After a new pull request is created, a matching open pull request is closed and its branch deleted.
+
+        Git, GitHub API, and file operation errors also propagate to the caller.
+
+        Raises:
+            ValueError: If the open pull request limit is not an integer when checked.
         """
-        head = f"dependabot/platformio/{'' if str(self.ini.parent) == '.' else f'{re.sub(r"[^a-z0-9/]", "", str(self.ini.parent).lower())}/'}{result.package}-{result.version_to}"
+        root = "dependabot/platformio/"
+        path = str(self.ini.parent)
+        if path == ".":
+            path = ""
+        prefix = f"{root}{'' if len(path) == 0 else f'{path}/'}{result.package}"
+        version = result.version_to
+        for pattern, replacement in [
+            (re.compile(r"[^a-zA-Z0-9/._+-]"), "-"),
+            (re.compile(r"(?i)\.lock(?=/|$)"), "-lock"),
+            (re.compile(r"-+"), "-"),
+            (re.compile(r"\.{2,}"), "."),
+            (re.compile(r"/\.+"), "/"),
+            (re.compile(r"\.+/"), "/"),
+            (re.compile(r"/{2,}"), "/"),
+        ]:
+            prefix = pattern.sub(replacement, prefix)
+            version = pattern.sub(replacement, version)
+        prefix = f"{prefix.strip('/.-')}-".lower()
+        head = f"{prefix}{version.strip('/.-').lower()}"
         if head in self._git.heads:
             return
         repo = self._github.get_repo(self.repository)
         if repo.get_pulls(base=self.ref, head=f"{repo.owner.login}:{head}", state="all").totalCount > 0:
             return
         pulls = repo.get_pulls(base=self.ref, state="open")
-        _pr = next((pr for pr in pulls if pr.head.ref.startswith(head.removesuffix(result.version_to))), None)
-        if _pr is None and sum(1 for pr in pulls if pr.head.ref.startswith("dependabot/platformio/")) >= int(
+        _pr = next((pr for pr in pulls if pr.head.ref.startswith(prefix)), None)
+        if _pr is None and sum(1 for pr in pulls if pr.head.ref.startswith(root)) >= int(
             os.getenv(models.Inputs.OPEN_PULL_REQUESTS_LIMIT, models.Defaults.OPEN_PULL_REQUESTS_LIMIT)
         ):
             return
@@ -259,15 +284,13 @@ class Piobot:
             for line in file:
                 sys.stdout.write(line.replace(dependency.value, result.value))
         self._git.index.add(self.ini)
-        self._git.index.commit(
-            f"Bump {result.package} from {result.version_from} to {result.version_to} in /{'' if str(self.ini.parent) == '.' else self.ini.parent!s}"
-        )
+        self._git.index.commit(f"Bump {result.package} from {result.version_from} to {result.version_to} in /{path}")
         self._git.remote().push(head).raise_if_error()
         pr = repo.create_pull(
             base=self.ref,
             body=f"{result.body}\n\n---\n<sub>Close this PR to ignore this release. [PlatformIO Dependency Updater](https://github.com/VIPnytt/platformio-dependency-updater) will retain this choice.</sub>",
             head=head,
-            title=f"Bump {result.package} from {result.version_from} to {result.version_to}{'' if str(self.ini.parent) == '.' else f' in /{self.ini.parent!s}'}",
+            title=f"Bump {result.package} from {result.version_from} to {result.version_to}{'' if len(path) == 0 else f' in /{path}'}",
         )
         for label in repo.get_labels():
             if label.name in self.labels:
