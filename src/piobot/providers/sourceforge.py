@@ -10,17 +10,17 @@ from .. import models
 
 class MatchCommit(typing.TypedDict):
     commit: str
-    owner: str
+    mount: str
     package: str | None
-    repo: str
+    project: str
     tag: str
     variant: str
 
 
 class MatchTag(typing.TypedDict):
-    owner: str
+    mount: str
     package: str | None
-    repo: str
+    project: str
     tag: str
     variant: str
 
@@ -44,22 +44,22 @@ class Resolve:
         self.cooldown = cooldown
         self.tags = re.compile(r"^[0-9a-f]{4}(?P<commit>[0-9a-f]{40})\srefs/tags/(?P<tag>\S+)\^{}$")
         self._ball_commit = re.compile(
-            r"^(?:(?P<package>(?:[^/\s]+/)?[^/\s]+)?\s*@\s*)?https://sourceforge\.net/p/(?P<owner>[^/\s]+)/(?P<repo>[^/\s]+)/ci/(?P<commit>[0-9a-f]{40})/(?P<variant>tar)ball(?:\s*;\s*(?P<tag>\S+)$"
+            r"^(?:(?P<package>(?:[^/\s]+/)?[^/\s]+)?\s*@\s*)?https://sourceforge\.net/p/(?P<project>[^/\s]+)/(?P<mount>[^/\s]+)/ci/(?P<commit>[0-9a-f]{40})/(?P<variant>tar)ball(?:\s*;\s*(?P<tag>\S+)$"
         )
         self._ball_tag = re.compile(
-            r"^(?:(?P<package>(?:[^/\s]+/)?[^/\s]+)?\s*@\s*)?https://sourceforge\.net/p/(?P<owner>[^/\s]+)/(?P<repo>[^/\s]+)/ci/(?P<tag>[^/\s]+)/(?P<variant>tar)ball(?:\s*;.*)?$"
+            r"^(?:(?P<package>(?:[^/\s]+/)?[^/\s]+)?\s*@\s*)?https://sourceforge\.net/p/(?P<project>[^/\s]+)/(?P<mount>[^/\s]+)/ci/(?P<tag>[^/\s]+)/(?P<variant>tar)ball(?:\s*;.*)?$"
         )
         self._git_commit = re.compile(
-            r"^(?:(?P<package>(?:[^/\s]+/)?[^/\s]+)?\s*@\s*)?(?P<variant>git|git\+https|git\+ssh|https)://git\.code\.sf\.net/p/(?P<owner>[^/\s]+)/(?P<repo>[^/\s]+)#(?P<commit>[0-9a-f]{40})\s*;\s*(?P<tag>\S+)$"
+            r"^(?:(?P<package>(?:[^/\s]+/)?[^/\s]+)?\s*@\s*)?(?P<variant>git|git\+https|git\+ssh|https)://git\.code\.sf\.net/p/(?P<project>[^/\s]+)/(?P<mount>[^/\s]+)#(?P<commit>[0-9a-f]{40})\s*;\s*(?P<tag>\S+)$"
         )
         self._git_tag = re.compile(
-            r"^(?:(?P<package>(?:[^/\s]+/)?[^/\s]+)?\s*@\s*)?(?P<variant>git|git\+https|git\+ssh|https)://git\.code\.sf\.net/p/(?P<owner>[^/\s]+)/(?P<repo>[^/\s]+)#(?P<tag>[^/\s]+)(?:\s*;.*)?$"
+            r"^(?:(?P<package>(?:[^/\s]+/)?[^/\s]+)?\s*@\s*)?(?P<variant>git|git\+https|git\+ssh|https)://git\.code\.sf\.net/p/(?P<project>[^/\s]+)/(?P<mount>[^/\s]+)#(?P<tag>[^/\s]+)(?:\s*;.*)?$"
         )
         self._tree_commit = re.compile(
-            r"^(?:(?P<package>(?:[^/\s]+/)?[^/\s]+)?\s*@\s*)?https://sourceforge\.net/p/(?P<owner>[^/\s]+)/(?P<repo>[^/\s]+)/ci/(?P<commit>[0-9a-f]{40})/tree/\?format=(?P<variant>tar|tgz|zip)(?:\s*;\s*(?P<tag>\S+)$"
+            r"^(?:(?P<package>(?:[^/\s]+/)?[^/\s]+)?\s*@\s*)?https://sourceforge\.net/p/(?P<project>[^/\s]+)/(?P<mount>[^/\s]+)/ci/(?P<commit>[0-9a-f]{40})/tree/\?format=(?P<variant>tar|tgz|zip)(?:\s*;\s*(?P<tag>\S+)$"
         )
         self._tree_tag = re.compile(
-            r"^(?:(?P<package>(?:[^/\s]+/)?[^/\s]+)?\s*@\s*)?https://sourceforge\.net/p/(?P<owner>[^/\s]+)/(?P<repo>[^/\s]+)/ci/(?P<tag>[^/\s]+)/tree/\?format=(?P<variant>tar|tgz|zip)(?:\s*;.*)?$"
+            r"^(?:(?P<package>(?:[^/\s]+/)?[^/\s]+)?\s*@\s*)?https://sourceforge\.net/p/(?P<project>[^/\s]+)/(?P<mount>[^/\s]+)/ci/(?P<tag>[^/\s]+)/tree/\?format=(?P<variant>tar|tgz|zip)(?:\s*;.*)?$"
         )
 
     def tag_commit_ball(self, dependency: models.Dependency) -> models.Result | str | None:
@@ -67,19 +67,19 @@ class Resolve:
         if not match:
             return None
         version = packaging.version.Version(match["tag"])
-        ref = self._request_tag(match["owner"], match["repo"], version)
+        ref = self._request_tag(match["project"], match["mount"], version)
         if ref is None:
             return None
-        value = f"{'' if match['package'] is None else f'{match["package"]} @ '}https://sourceforge.net/p/{match['owner']}/{match['repo']}/ci/{ref['commit']}/{match['variant']}ball ; {ref['tag']}"
+        value = f"{'' if match['package'] is None else f'{match["package"]} @ '}https://sourceforge.net/p/{match['project']}/{match['mount']}/ci/{ref['commit']}/{match['variant']}ball ; {ref['tag']}"
         return (
             models.Result(
                 body="\n".join(
                     [
-                        f"Bumps [{match['owner']}/{match['repo']}](https://sourceforge.net/p/{match['owner']}/{match['repo']}/) from {match['tag']} to {ref['tag']}.",
-                        f"- [Tag](https://sourceforge.net/p/{match['owner']}/{match['repo']}/ci/{ref['tag']})",
+                        f"Bumps [{match['project']}/{match['mount']}](https://sourceforge.net/p/{match['project']}/{match['mount']}/) from {match['tag']} to {ref['tag']}.",
+                        f"- [Tag](https://sourceforge.net/p/{match['project']}/{match['mount']}/ci/{ref['tag']})",
                     ]
                 ),
-                package=f"{match['owner']}/{match['repo']}",
+                package=f"{match['project']}/{match['mount']}",
                 value=value,
                 version_from=match["tag"].removeprefix("v"),
                 version_to=ref["tag"].removeprefix("v"),
@@ -93,19 +93,19 @@ class Resolve:
         if not match:
             return None
         version = packaging.version.Version(match["tag"])
-        ref = self._request_tag(match["owner"], match["repo"], version)
+        ref = self._request_tag(match["project"], match["mount"], version)
         if ref is None:
             return None
-        value = f"{'' if match['package'] is None else f'{match["package"]} @ '}{match['variant']}://git.code.sf.net/p/{match['owner']}/{match['repo']}#{ref['commit']} ; {ref['tag']}"
+        value = f"{'' if match['package'] is None else f'{match["package"]} @ '}{match['variant']}://git.code.sf.net/p/{match['project']}/{match['mount']}#{ref['commit']} ; {ref['tag']}"
         return (
             models.Result(
                 body="\n".join(
                     [
-                        f"Bumps [{match['owner']}/{match['repo']}](https://sourceforge.net/p/{match['owner']}/{match['repo']}/) from {match['tag']} to {ref['tag']}.",
-                        f"- [Tag](https://sourceforge.net/p/{match['owner']}/{match['repo']}/ci/{ref['tag']})",
+                        f"Bumps [{match['project']}/{match['mount']}](https://sourceforge.net/p/{match['project']}/{match['mount']}/) from {match['tag']} to {ref['tag']}.",
+                        f"- [Tag](https://sourceforge.net/p/{match['project']}/{match['mount']}/ci/{ref['tag']})",
                     ]
                 ),
-                package=f"{match['owner']}/{match['repo']}",
+                package=f"{match['project']}/{match['mount']}",
                 value=value,
                 version_from=match["tag"].removeprefix("v"),
                 version_to=ref["tag"].removeprefix("v"),
@@ -119,19 +119,19 @@ class Resolve:
         if not match:
             return None
         version = packaging.version.Version(match["tag"])
-        ref = self._request_tag(match["owner"], match["repo"], version)
+        ref = self._request_tag(match["project"], match["mount"], version)
         if ref is None:
             return None
-        value = f"{'' if match['package'] is None else f'{match["package"]} @ '}https://sourceforge.net/p/{match['owner']}/{match['repo']}/ci/{ref['commit']}/tree/?format={match['variant']} ; {ref['tag']}"
+        value = f"{'' if match['package'] is None else f'{match["package"]} @ '}https://sourceforge.net/p/{match['project']}/{match['mount']}/ci/{ref['commit']}/tree/?format={match['variant']} ; {ref['tag']}"
         return (
             models.Result(
                 body="\n".join(
                     [
-                        f"Bumps [{match['owner']}/{match['repo']}](https://sourceforge.net/p/{match['owner']}/{match['repo']}/) from {match['tag']} to {ref['tag']}.",
-                        f"- [Tag](https://sourceforge.net/p/{match['owner']}/{match['repo']}/ci/{ref['tag']})",
+                        f"Bumps [{match['project']}/{match['mount']}](https://sourceforge.net/p/{match['project']}/{match['mount']}/) from {match['tag']} to {ref['tag']}.",
+                        f"- [Tag](https://sourceforge.net/p/{match['project']}/{match['mount']}/ci/{ref['tag']})",
                     ]
                 ),
-                package=f"{match['owner']}/{match['repo']}",
+                package=f"{match['project']}/{match['mount']}",
                 value=value,
                 version_from=match["tag"].removeprefix("v"),
                 version_to=ref["tag"].removeprefix("v"),
@@ -145,19 +145,19 @@ class Resolve:
         if not match:
             return None
         version = packaging.version.Version(match["tag"])
-        ref = self._request_tag(match["owner"], match["repo"], version)
+        ref = self._request_tag(match["project"], match["mount"], version)
         if ref is None:
             return None
-        value = f"{'' if match['package'] is None else f'{match["package"]} @ '}https://sourceforge.net/p/{match['owner']}/{match['repo']}/ci/{ref['tag']}/{match['variant']}ball ; {ref['tag']}"
+        value = f"{'' if match['package'] is None else f'{match["package"]} @ '}https://sourceforge.net/p/{match['project']}/{match['mount']}/ci/{ref['tag']}/{match['variant']}ball ; {ref['tag']}"
         return (
             models.Result(
                 body="\n".join(
                     [
-                        f"Bumps [{match['owner']}/{match['repo']}](https://sourceforge.net/p/{match['owner']}/{match['repo']}/) from {match['tag']} to {ref['tag']}.",
-                        f"- [Tag](https://sourceforge.net/p/{match['owner']}/{match['repo']}/ci/{ref['tag']})",
+                        f"Bumps [{match['project']}/{match['mount']}](https://sourceforge.net/p/{match['project']}/{match['mount']}/) from {match['tag']} to {ref['tag']}.",
+                        f"- [Tag](https://sourceforge.net/p/{match['project']}/{match['mount']}/ci/{ref['tag']})",
                     ]
                 ),
-                package=f"{match['owner']}/{match['repo']}",
+                package=f"{match['project']}/{match['mount']}",
                 value=value,
                 version_from=match["tag"].removeprefix("v"),
                 version_to=ref["tag"].removeprefix("v"),
@@ -171,19 +171,19 @@ class Resolve:
         if not match:
             return None
         version = packaging.version.Version(match["tag"])
-        ref = self._request_tag(match["owner"], match["repo"], version)
+        ref = self._request_tag(match["project"], match["mount"], version)
         if ref is None:
             return None
-        value = f"{'' if match['package'] is None else f'{match["package"]} @ '}{match['variant']}://git.code.sf.net/p/{match['owner']}/{match['repo']}#{ref['tag']} ; {ref['tag']}"
+        value = f"{'' if match['package'] is None else f'{match["package"]} @ '}{match['variant']}://git.code.sf.net/p/{match['project']}/{match['mount']}#{ref['tag']} ; {ref['tag']}"
         return (
             models.Result(
                 body="\n".join(
                     [
-                        f"Bumps [{match['owner']}/{match['repo']}](https://sourceforge.net/p/{match['owner']}/{match['repo']}/) from {match['tag']} to {ref['tag']}.",
-                        f"- [Tag](https://sourceforge.net/p/{match['owner']}/{match['repo']}/ci/{ref['tag']})",
+                        f"Bumps [{match['project']}/{match['mount']}](https://sourceforge.net/p/{match['project']}/{match['mount']}/) from {match['tag']} to {ref['tag']}.",
+                        f"- [Tag](https://sourceforge.net/p/{match['project']}/{match['mount']}/ci/{ref['tag']})",
                     ]
                 ),
-                package=f"{match['owner']}/{match['repo']}",
+                package=f"{match['project']}/{match['mount']}",
                 value=value,
                 version_from=match["tag"].removeprefix("v"),
                 version_to=ref["tag"].removeprefix("v"),
@@ -197,19 +197,19 @@ class Resolve:
         if not match:
             return None
         version = packaging.version.Version(match["tag"])
-        ref = self._request_tag(match["owner"], match["repo"], version)
+        ref = self._request_tag(match["project"], match["mount"], version)
         if ref is None:
             return None
-        value = f"{'' if match['package'] is None else f'{match["package"]} @ '}https://sourceforge.net/p/{match['owner']}/{match['repo']}/ci/{ref['tag']}/tree/?format={match['variant']} ; {ref['tag']}"
+        value = f"{'' if match['package'] is None else f'{match["package"]} @ '}https://sourceforge.net/p/{match['project']}/{match['mount']}/ci/{ref['tag']}/tree/?format={match['variant']} ; {ref['tag']}"
         return (
             models.Result(
                 body="\n".join(
                     [
-                        f"Bumps [{match['owner']}/{match['repo']}](https://sourceforge.net/p/{match['owner']}/{match['repo']}/) from {match['tag']} to {ref['tag']}.",
-                        f"- [Tag](https://sourceforge.net/p/{match['owner']}/{match['repo']}/ci/{ref['tag']})",
+                        f"Bumps [{match['project']}/{match['mount']}](https://sourceforge.net/p/{match['project']}/{match['mount']}/) from {match['tag']} to {ref['tag']}.",
+                        f"- [Tag](https://sourceforge.net/p/{match['project']}/{match['mount']}/ci/{ref['tag']})",
                     ]
                 ),
-                package=f"{match['owner']}/{match['repo']}",
+                package=f"{match['project']}/{match['mount']}",
                 value=value,
                 version_from=match["tag"].removeprefix("v"),
                 version_to=ref["tag"].removeprefix("v"),
@@ -218,9 +218,9 @@ class Resolve:
             else f"{dependency.option} = {value}"
         )
 
-    def _request_tag(self, owner: str, repo: str, version: packaging.version.Version) -> Tag | None:
+    def _request_tag(self, project: str, mount: str, version: packaging.version.Version) -> Tag | None:
         latest = None
-        url = f"https://git.code.sf.net/p/{owner}/{repo}/info/refs?service=git-upload-pack"
+        url = f"https://git.code.sf.net/p/{project}/{mount}/info/refs?service=git-upload-pack"
         for line in self._request(url).iter_lines():
             match = typing.cast(Tag | None, self.tags.fullmatch(line.decode()))
             if not match:
@@ -231,7 +231,7 @@ class Resolve:
                 elif not latest:
                     latest = match
             except packaging.version.InvalidVersion:
-                print(f"::debug::Invalid version: {owner}/{repo} {match['tag']}")
+                print(f"::debug::Invalid version: {project}/{mount} {match['tag']}")
                 continue
         return latest
 
