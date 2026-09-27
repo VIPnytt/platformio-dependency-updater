@@ -225,6 +225,12 @@ class Piobot:
                 break
 
     def sourceforge(self) -> None:
+        """
+        Resolve SourceForge dependencies and publish available updates through the dependency handler.
+
+        Handled dependencies are removed from tracking. Exceptions from individual resolution or update
+        attempts are caught so remaining attempts can continue.
+        """
         resolve = sourceforge.Resolve(self.cooldown)
         for description, handler in {
             "tag commit ball": resolve.tag_commit_ball,
