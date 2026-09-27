@@ -17,6 +17,12 @@ class MatchCommit(typing.TypedDict):
     variant: str
 
 
+class MatchRef(typing.TypedDict):
+    commit: str
+    peel: str | None
+    tag: str
+
+
 class MatchTag(typing.TypedDict):
     mount: str
     package: str | None
@@ -32,7 +38,7 @@ class Tag(typing.TypedDict):
 
 class Resolve:
     cooldown: datetime.timedelta
-    tags: re.Pattern[str]
+    ref: re.Pattern[str]
     _ball_commit: re.Pattern[str]
     _ball_tag: re.Pattern[str]
     _git_commit: re.Pattern[str]
@@ -42,7 +48,7 @@ class Resolve:
 
     def __init__(self, cooldown: datetime.timedelta) -> None:
         self.cooldown = cooldown
-        self.tags = re.compile(r"^[0-9a-f]{4}(?P<commit>[0-9a-f]{40})\srefs/tags/(?P<tag>\S+)\^{}$")
+        self.ref = re.compile(r"^[0-9a-f]{4}(?P<commit>[0-9a-f]{40})\srefs/tags/(?P<tag>[^\s^]+)(?P<peel>\^\{\})?$")
         self._ball_commit = re.compile(
             r"^(?:(?P<package>(?:[^/\s]+/)?[^/\s]+)?\s*@\s*)?https://sourceforge\.net/p/(?P<project>[^/\s]+)/(?P<mount>[^/\s]+)/ci/(?P<commit>[0-9a-f]{40})/(?P<variant>tar)ball(?:\s*;\s*(?P<tag>\S+)$"
         )
@@ -219,19 +225,31 @@ class Resolve:
         )
 
     def _request_tag(self, project: str, mount: str, version: packaging.version.Version) -> Tag | None:
-        latest = None
         url = f"https://git.code.sf.net/p/{project}/{mount}/info/refs?service=git-upload-pack"
+        tags: dict[str, str] = {}
         for line in self._request(url).iter_lines():
-            match = typing.cast(Tag | None, self.tags.fullmatch(line.decode()))
+            match = typing.cast(MatchRef | None, self.ref.fullmatch(line.decode()))
             if not match:
                 continue
+            elif match["peel"] is None:
+                tags.setdefault(match["tag"], match["commit"])
+            else:
+                tags[match["tag"]] = match["commit"]
+        version_: packaging.version.Version | None = None
+        latest: Tag | None = None
+        for _tag, _commit in tags.items():
             try:
-                if packaging.version.Version(match["tag"]) > version:
-                    return match
-                elif not latest:
-                    latest = match
+                _version = packaging.version.Version(_tag)
+                if _version.is_prerelease and not version.is_prerelease:
+                    continue
+                elif version_ is None or _version > version_:
+                    version_ = _version
+                    latest = {
+                        "commit": _commit,
+                        "tag": _tag,
+                    }
             except packaging.version.InvalidVersion:
-                print(f"::debug::Invalid version: {project}/{mount} {match['tag']}")
+                print(f"::debug::Invalid version: {project}/{mount} {_tag}")
                 continue
         return latest
 
