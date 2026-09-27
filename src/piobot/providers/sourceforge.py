@@ -50,7 +50,7 @@ class Resolve:
         self.cooldown = cooldown
         self.ref = re.compile(r"^[0-9a-f]{4}(?P<commit>[0-9a-f]{40})\srefs/tags/(?P<tag>[^\s^]+)(?P<peel>\^\{\})?$")
         self._ball_commit = re.compile(
-            r"^(?:(?P<package>(?:[^/\s]+/)?[^/\s]+)?\s*@\s*)?https://sourceforge\.net/p/(?P<project>[^/\s]+)/(?P<mount>[^/\s]+)/ci/(?P<commit>[0-9a-f]{40})/(?P<variant>tar)ball(?:\s*;\s*(?P<tag>\S+)$"
+            r"^(?:(?P<package>(?:[^/\s]+/)?[^/\s]+)?\s*@\s*)?https://sourceforge\.net/p/(?P<project>[^/\s]+)/(?P<mount>[^/\s]+)/ci/(?P<commit>[0-9a-f]{40})/(?P<variant>tar)ball\s*;\s*(?P<tag>\S+)$"
         )
         self._ball_tag = re.compile(
             r"^(?:(?P<package>(?:[^/\s]+/)?[^/\s]+)?\s*@\s*)?https://sourceforge\.net/p/(?P<project>[^/\s]+)/(?P<mount>[^/\s]+)/ci/(?P<tag>[^/\s]+)/(?P<variant>tar)ball(?:\s*;.*)?$"
@@ -62,7 +62,7 @@ class Resolve:
             r"^(?:(?P<package>(?:[^/\s]+/)?[^/\s]+)?\s*@\s*)?(?P<variant>git|git\+https|git\+ssh|https)://git\.code\.sf\.net/p/(?P<project>[^/\s]+)/(?P<mount>[^/\s]+)#(?P<tag>[^/\s]+)(?:\s*;.*)?$"
         )
         self._tree_commit = re.compile(
-            r"^(?:(?P<package>(?:[^/\s]+/)?[^/\s]+)?\s*@\s*)?https://sourceforge\.net/p/(?P<project>[^/\s]+)/(?P<mount>[^/\s]+)/ci/(?P<commit>[0-9a-f]{40})/tree/\?format=(?P<variant>tar|tgz|zip)(?:\s*;\s*(?P<tag>\S+)$"
+            r"^(?:(?P<package>(?:[^/\s]+/)?[^/\s]+)?\s*@\s*)?https://sourceforge\.net/p/(?P<project>[^/\s]+)/(?P<mount>[^/\s]+)/ci/(?P<commit>[0-9a-f]{40})/tree/\?format=(?P<variant>tar|tgz|zip)\s*;\s*(?P<tag>\S+)$"
         )
         self._tree_tag = re.compile(
             r"^(?:(?P<package>(?:[^/\s]+/)?[^/\s]+)?\s*@\s*)?https://sourceforge\.net/p/(?P<project>[^/\s]+)/(?P<mount>[^/\s]+)/ci/(?P<tag>[^/\s]+)/tree/\?format=(?P<variant>tar|tgz|zip)(?:\s*;.*)?$"
