@@ -1,4 +1,3 @@
-import datetime
 import re
 import typing
 
@@ -37,7 +36,6 @@ class Tag(typing.TypedDict):
 
 
 class Resolve:
-    cooldown: datetime.timedelta
     ref: re.Pattern[str]
     _ball_commit: re.Pattern[str]
     _ball_tag: re.Pattern[str]
@@ -46,13 +44,8 @@ class Resolve:
     _tree_commit: re.Pattern[str]
     _tree_tag: re.Pattern[str]
 
-    def __init__(self, cooldown: datetime.timedelta) -> None:
-        """
-        Initialize the SourceForge dependency resolver.
-
-        The cooldown is stored but does not restrict tag selection by age.
-        """
-        self.cooldown = cooldown
+    def __init__(self) -> None:
+        """Initialize the SourceForge dependency resolver."""
         self.ref = re.compile(r"^[0-9a-f]{4}(?P<commit>[0-9a-f]{40})\srefs/tags/(?P<tag>[^\s^]+)(?P<peel>\^\{\})?$")
         self._ball_commit = re.compile(
             r"^(?:(?P<package>(?:[^/\s]+/)?[^/\s]+)?\s*@\s*)?https://sourceforge\.net/p/(?P<project>[^/\s]+)/(?P<mount>[^/\s]+)/ci/(?P<commit>[0-9a-f]{40})/(?P<variant>tar)ball\s*;\s*(?P<tag>\S+)$"

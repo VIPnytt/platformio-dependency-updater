@@ -231,7 +231,7 @@ class Piobot:
         Handled dependencies are removed from tracking. Exceptions from individual resolution or update
         attempts are caught so remaining attempts can continue.
         """
-        resolve = sourceforge.Resolve(self.cooldown)
+        resolve = sourceforge.Resolve()
         for description, handler in {
             "tag commit ball": resolve.tag_commit_ball,
             "tag commit git": resolve.tag_commit_git,
