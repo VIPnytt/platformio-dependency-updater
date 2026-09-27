@@ -44,19 +44,19 @@ class Resolve:
         self.cooldown = cooldown
         self.tags = re.compile(r"^[0-9a-f]{4}(?P<commit>[0-9a-f]{40})\srefs/tags/(?P<tag>\S+)\^{}$")
         self._ball_commit = re.compile(
-            r"^(?:(?P<package>(?:[^/\s]+/)?[^/\s]+)?\s*@\s*)?https://sourceforge\.net/p/(?P<owner>[^/\s]+)/(?P<repo>[^/\s]+)/ci/(?P<commit>[0-9a-f]{40})/(?P<variant>tar)ball(?:\s*;.*)?$"
+            r"^(?:(?P<package>(?:[^/\s]+/)?[^/\s]+)?\s*@\s*)?https://sourceforge\.net/p/(?P<owner>[^/\s]+)/(?P<repo>[^/\s]+)/ci/(?P<commit>[0-9a-f]{40})/(?P<variant>tar)ball(?:\s*;\s*(?P<tag>\S+)$"
         )
         self._ball_tag = re.compile(
             r"^(?:(?P<package>(?:[^/\s]+/)?[^/\s]+)?\s*@\s*)?https://sourceforge\.net/p/(?P<owner>[^/\s]+)/(?P<repo>[^/\s]+)/ci/(?P<tag>[^/\s]+)/(?P<variant>tar)ball(?:\s*;.*)?$"
         )
         self._git_commit = re.compile(
-            r"^(?:(?P<package>(?:[^/\s]+/)?[^/\s]+)?\s*@\s*)?(?P<variant>git|git\+https|git\+ssh|https)://git\.code\.sf\.net\.com/p/(?P<owner>[^/\s]+)/(?P<repo>[^/\s]+)#(?P<commit>[0-9a-f]{40})\s*;\s*(?P<tag>\S+)$"
+            r"^(?:(?P<package>(?:[^/\s]+/)?[^/\s]+)?\s*@\s*)?(?P<variant>git|git\+https|git\+ssh|https)://git\.code\.sf\.net/p/(?P<owner>[^/\s]+)/(?P<repo>[^/\s]+)#(?P<commit>[0-9a-f]{40})\s*;\s*(?P<tag>\S+)$"
         )
         self._git_tag = re.compile(
-            r"^(?:(?P<package>(?:[^/\s]+/)?[^/\s]+)?\s*@\s*)?(?P<variant>git|git\+https|git\+ssh|https)://git\.code\.sf\.net\.com/p/(?P<owner>[^/\s]+)/(?P<repo>[^/\s]+)#(?P<tag>[^/\s]+)(?:\s*;.*)?$"
+            r"^(?:(?P<package>(?:[^/\s]+/)?[^/\s]+)?\s*@\s*)?(?P<variant>git|git\+https|git\+ssh|https)://git\.code\.sf\.net/p/(?P<owner>[^/\s]+)/(?P<repo>[^/\s]+)#(?P<tag>[^/\s]+)(?:\s*;.*)?$"
         )
         self._tree_commit = re.compile(
-            r"^(?:(?P<package>(?:[^/\s]+/)?[^/\s]+)?\s*@\s*)?https://sourceforge\.net/p/(?P<owner>[^/\s]+)/(?P<repo>[^/\s]+)/ci/(?P<commit>[0-9a-f]{40})/tree/\?format=(?P<variant>tar|tgz|zip)(?:\s*;.*)?$"
+            r"^(?:(?P<package>(?:[^/\s]+/)?[^/\s]+)?\s*@\s*)?https://sourceforge\.net/p/(?P<owner>[^/\s]+)/(?P<repo>[^/\s]+)/ci/(?P<commit>[0-9a-f]{40})/tree/\?format=(?P<variant>tar|tgz|zip)(?:\s*;\s*(?P<tag>\S+)$"
         )
         self._tree_tag = re.compile(
             r"^(?:(?P<package>(?:[^/\s]+/)?[^/\s]+)?\s*@\s*)?https://sourceforge\.net/p/(?P<owner>[^/\s]+)/(?P<repo>[^/\s]+)/ci/(?P<tag>[^/\s]+)/tree/\?format=(?P<variant>tar|tgz|zip)(?:\s*;.*)?$"
@@ -76,7 +76,7 @@ class Resolve:
                 body="\n".join(
                     [
                         f"Bumps [{match['owner']}/{match['repo']}](https://sourceforge.net/p/{match['owner']}/{match['repo']}/) from {match['tag']} to {ref['tag']}.",
-                        f"- [Tag](https://sourceforge.net/{match['owner']}/{match['repo']}/ci/{ref['tag']})",
+                        f"- [Tag](https://sourceforge.net/p/{match['owner']}/{match['repo']}/ci/{ref['tag']})",
                     ]
                 ),
                 package=f"{match['owner']}/{match['repo']}",
@@ -102,7 +102,7 @@ class Resolve:
                 body="\n".join(
                     [
                         f"Bumps [{match['owner']}/{match['repo']}](https://sourceforge.net/p/{match['owner']}/{match['repo']}/) from {match['tag']} to {ref['tag']}.",
-                        f"- [Tag](https://sourceforge.net/{match['owner']}/{match['repo']}/ci/{ref['tag']})",
+                        f"- [Tag](https://sourceforge.net/p/{match['owner']}/{match['repo']}/ci/{ref['tag']})",
                     ]
                 ),
                 package=f"{match['owner']}/{match['repo']}",
@@ -128,7 +128,7 @@ class Resolve:
                 body="\n".join(
                     [
                         f"Bumps [{match['owner']}/{match['repo']}](https://sourceforge.net/p/{match['owner']}/{match['repo']}/) from {match['tag']} to {ref['tag']}.",
-                        f"- [Tag](https://sourceforge.net/{match['owner']}/{match['repo']}/ci/{ref['tag']})",
+                        f"- [Tag](https://sourceforge.net/p/{match['owner']}/{match['repo']}/ci/{ref['tag']})",
                     ]
                 ),
                 package=f"{match['owner']}/{match['repo']}",
@@ -141,7 +141,7 @@ class Resolve:
         )
 
     def tag_ball(self, dependency: models.Dependency) -> models.Result | str | None:
-        match = typing.cast(MatchCommit | None, self._ball_tag.fullmatch(dependency.value))
+        match = typing.cast(MatchTag | None, self._ball_tag.fullmatch(dependency.value))
         if not match:
             return None
         version = packaging.version.Version(match["tag"])
@@ -154,7 +154,7 @@ class Resolve:
                 body="\n".join(
                     [
                         f"Bumps [{match['owner']}/{match['repo']}](https://sourceforge.net/p/{match['owner']}/{match['repo']}/) from {match['tag']} to {ref['tag']}.",
-                        f"- [Tag](https://sourceforge.net/{match['owner']}/{match['repo']}/ci/{ref['tag']})",
+                        f"- [Tag](https://sourceforge.net/p/{match['owner']}/{match['repo']}/ci/{ref['tag']})",
                     ]
                 ),
                 package=f"{match['owner']}/{match['repo']}",
@@ -167,7 +167,7 @@ class Resolve:
         )
 
     def tag_git(self, dependency: models.Dependency) -> models.Result | str | None:
-        match = typing.cast(MatchCommit | None, self._git_tag.fullmatch(dependency.value))
+        match = typing.cast(MatchTag | None, self._git_tag.fullmatch(dependency.value))
         if not match:
             return None
         version = packaging.version.Version(match["tag"])
@@ -180,7 +180,7 @@ class Resolve:
                 body="\n".join(
                     [
                         f"Bumps [{match['owner']}/{match['repo']}](https://sourceforge.net/p/{match['owner']}/{match['repo']}/) from {match['tag']} to {ref['tag']}.",
-                        f"- [Tag](https://sourceforge.net/{match['owner']}/{match['repo']}/ci/{ref['tag']})",
+                        f"- [Tag](https://sourceforge.net/p/{match['owner']}/{match['repo']}/ci/{ref['tag']})",
                     ]
                 ),
                 package=f"{match['owner']}/{match['repo']}",
@@ -206,7 +206,7 @@ class Resolve:
                 body="\n".join(
                     [
                         f"Bumps [{match['owner']}/{match['repo']}](https://sourceforge.net/p/{match['owner']}/{match['repo']}/) from {match['tag']} to {ref['tag']}.",
-                        f"- [Tag](https://sourceforge.net/{match['owner']}/{match['repo']}/ci/{ref['tag']})",
+                        f"- [Tag](https://sourceforge.net/p/{match['owner']}/{match['repo']}/ci/{ref['tag']})",
                     ]
                 ),
                 package=f"{match['owner']}/{match['repo']}",
