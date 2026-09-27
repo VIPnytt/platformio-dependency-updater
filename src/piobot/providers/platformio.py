@@ -287,11 +287,11 @@ class Resolve:
 
     def _operator(self, version: str) -> tuple[str, str]:
         if "," not in version:
-            for _operator in ("^", "~", ">="):
-                if version.startswith(_operator):
-                    return _operator, version.removeprefix(_operator)
-            if _operator == "==":
-                return "", version.removeprefix(_operator)
+            for operator in ("^", "~", ">="):
+                if version.startswith(operator):
+                    return operator, version.removeprefix(operator)
+            if version.startswith("=="):
+                return "", version.removeprefix("==")
         return "", version
 
     def _parse(self, data: Data, version: packaging.version.Version) -> Version | None:
