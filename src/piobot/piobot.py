@@ -10,7 +10,7 @@ import git as gitpython
 import github as pygithub
 
 from . import models
-from .providers import arduino, bitbucket, espressif, github, gitlab, platformio
+from .providers import arduino, bitbucket, espressif, github, gitlab, platformio, sourceforge
 
 
 class Piobot:
@@ -90,14 +90,15 @@ class Piobot:
 
     def check(self) -> None:
         """Resolve dependencies using the configured provider integrations."""
-        for provider in [
-            self.platformio,
+        for provider in (
+            self.arduino,
+            self.bitbucket,
             self.espressif,
             self.github,
             self.gitlab,
-            self.bitbucket,
-            self.arduino,
-        ]:
+            self.platformio,
+            self.sourceforge,
+        ):
             provider()
             if len(self.dependencies) == 0:
                 break
@@ -220,6 +221,24 @@ class Piobot:
                     self._handle("registry", dependency, handler(dependency))
                 except Exception as e:  # ruff:ignore[BLE001]
                     print(f"::warning PlatformIO Registry {description}::{e}")
+            if len(self.dependencies) == 0:
+                break
+
+    def sourceforge(self) -> None:
+        resolve = sourceforge.Resolve(self.cooldown)
+        for description, handler in {
+            "tag commit ball": resolve.tag_commit_ball,
+            "tag commit git": resolve.tag_commit_git,
+            "tag commit tree": resolve.tag_commit_tree,
+            "tag ball": resolve.tag_ball,
+            "tag git": resolve.tag_git,
+            "tag tree": resolve.tag_tree,
+        }.items():
+            for dependency in self.dependencies.copy():
+                try:
+                    self._handle("sourceforge", dependency, handler(dependency))
+                except Exception as e:  # ruff:ignore[BLE001]
+                    print(f"::warning SourceForge {description}::{e}")
             if len(self.dependencies) == 0:
                 break
 
