@@ -396,15 +396,6 @@ class Resolve:
         )
 
     def release_tag_commit_ball(self, dependency: models.Dependency) -> models.Result | str | None:
-        """
-        Resolve a commit-based API tarball or zipball dependency to a newer GitHub release.
-
-        Parameters:
-                dependency (models.Dependency): Dependency value containing the repository, commit, tag, and archive variant.
-
-        Returns:
-                models.Result | str | None: A release update result or formatted dependency assignment, or `None` when the value does not match or no suitable release is found.
-        """
         match = typing.cast(MatchCommit | None, self._ball_commit.fullmatch(dependency.value))
         if not match:
             return None
