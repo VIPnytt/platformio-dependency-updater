@@ -199,7 +199,7 @@ class Resolve:
         """
         Resolve an unscoped PlatformIO dependency name and version.
 
-        Preserve a leading `^`, `~`, `>=`, or `<=` when updating the version; strip `==` as an exact-version marker. Updates may move the version beyond the original range. Bare and `==` versions require a package containing that version; other supported operators require a package containing a version at least as high.
+        Preserve a leading `^`, `~`, or `>=` when updating the version; strip `==` as an exact-version marker. Updates may move the version beyond the original range. Bare and `==` versions require a package containing that version; other supported operators require a package containing a version at least as high.
 
         Parameters:
             dependency (models.Dependency): Dependency reference containing the package name, requested version, and package type option.
@@ -252,7 +252,7 @@ class Resolve:
         """
         Resolve a package reference and produce an update result or assignment.
 
-        Preserve a leading `^`, `~`, `>=`, or `<=` when updating the version; strip `==` as an exact-version marker. Updates may move the version beyond the original range.
+        Preserve a leading `^`, `~`, or `>=` when updating the version; strip `==` as an exact-version marker. Updates may move the version beyond the original range.
 
         Parameters:
             dependency (models.Dependency): Dependency option and package reference to resolve.
@@ -313,12 +313,12 @@ class Resolve:
 
     def _operator(self, version: str) -> tuple[str, str]:
         """
-        Split a leading `^`, `~`, `>=`, or `<=` from a version string.
+        Split a leading `^`, `~`, or `>=` from a version string.
 
         Return the operator and remaining text without validating or trimming it. A leading `==` is removed and returns an empty operator. Strings containing a comma or lacking a recognized prefix are returned unchanged with an empty operator.
         """
         if "," not in version:
-            for operator in ("^", "~", ">=", "<="):
+            for operator in ("^", "~", ">="):
                 if version.startswith(operator):
                     return operator, version.removeprefix(operator)
             if version.startswith("=="):
