@@ -250,6 +250,8 @@ class Resolve:
         version = packaging.version.Version(version_)
         data = self._request_package(dependency.option, match["owner"], match["name"])
         candidate = self._parse(data, version)
+        if len(operator) != 0 and (candidate is None or packaging.version.Version(candidate["name"]) < version):
+            return f"{dependency.option} = {dependency.value}"
         if candidate is None:
             return None
         value = f"{data['owner']['username']}/{data['name']} @ {operator}{candidate['name']}"
@@ -287,7 +289,7 @@ class Resolve:
 
     def _operator(self, version: str) -> tuple[str, str]:
         if "," not in version:
-            for operator in ("^", "~", ">="):
+            for operator in ("^", "~", ">=", "<="):
                 if version.startswith(operator):
                     return operator, version.removeprefix(operator)
             if version.startswith("=="):
