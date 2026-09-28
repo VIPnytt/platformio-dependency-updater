@@ -299,9 +299,8 @@ class Resolve:
         release = self._request_release(match["name"], match["tag"])
         if not release:
             return None
-        ball = release[f"{match['variant']}ball_url"]
-        owner, repo = self._parse_link(ball)
-        value = f"{'' if match['package'] is None else f'{match["package"]} @ '}{ball} ; {release['tag_name']}"
+        owner, repo = self._parse_link(release[f"{match['variant']}ball_url"])
+        value = f"{'' if match['package'] is None else f'{match["package"]} @ '}https://github.com/{owner}/{repo}/{match['variant']}ball/{release['tag_name']} ; {release['tag_name']}"
         return (
             models.Result(
                 body="\n".join(
@@ -569,8 +568,7 @@ class Resolve:
         tag = self._request_tag(match["name"], version)
         if not tag:
             return None
-        ball = tag[f"{match['variant']}ball_url"]
-        owner, repo = self._parse_link(ball)
+        owner, repo = self._parse_link(tag[f"{match['variant']}ball_url"])
         value = f"{'' if match['package'] is None else f'{match["package"]} @ '}https://github.com/{owner}/{repo}/{match['variant']}ball/{tag['name']} ; {tag['name']}"
         return (
             models.Result(
