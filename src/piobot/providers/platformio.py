@@ -45,6 +45,7 @@ class Item(typing.TypedDict):
     name: str
     owner: Owner
     type: str
+    version: Version
 
 
 class Name(typing.TypedDict):
@@ -96,7 +97,12 @@ class Resolve:
             dependency (models.Dependency): Dependency containing the API download URL.
 
         Returns:
-            models.Result | str | None: An update result when a newer eligible version is found, an assignment string when the current version is selected, or None when the URL or package cannot be resolved.
+            models.Result | str | None: An update result when a newer eligible version is found, an assignment string for an equal or older selected version, or None when the URL does not match, no eligible version exists, or no file matches the original system. Result version strings retain any `v` prefix.
+
+        Raises:
+            packaging.version.InvalidVersion: If the URL's decoded version is invalid.
+            requests.exceptions.RequestException: If a registry request fails or its response is not valid JSON.
+            ValueError: If a release timestamp cannot be parsed.
         """
         match = typing.cast(Download | None, self._api.fullmatch(dependency.value))
         if not match:
@@ -130,8 +136,8 @@ class Resolve:
                     ),
                     package=f"{data['owner']['username']}/{data['name']}",
                     value=value,
-                    version_from=version_.removeprefix("v"),
-                    version_to=_version["name"].removeprefix("v"),
+                    version_from=version_,
+                    version_to=_version["name"],
                 )
             return f"{dependency.option} = {value}"
         return None
@@ -144,7 +150,12 @@ class Resolve:
             dependency (models.Dependency): Dependency containing the direct download URL and update option.
 
         Returns:
-            models.Result | str | None: An update result for a newer version, an assignment string for the selected version, or `None` if the URL or matching file cannot be resolved.
+            models.Result | str | None: An update result for a newer version, an assignment string for an equal or older selected version, or `None` if the URL does not match, no eligible version exists, or no file matches the original system. Result version strings retain any `v` prefix.
+
+        Raises:
+            packaging.version.InvalidVersion: If the URL's decoded version is invalid.
+            requests.exceptions.RequestException: If a registry request fails or its response is not valid JSON.
+            ValueError: If a release timestamp cannot be parsed.
         """
         match = typing.cast(Download | None, self._download.fullmatch(dependency.value))
         if not match:
@@ -178,8 +189,8 @@ class Resolve:
                     ),
                     package=f"{data['owner']['username']}/{data['name']}",
                     value=value,
-                    version_from=version_.removeprefix("v"),
-                    version_to=_version["name"].removeprefix("v"),
+                    version_from=version_,
+                    version_to=_version["name"],
                 )
             return f"{dependency.option} = {value}"
         return None
@@ -188,38 +199,52 @@ class Resolve:
         """
         Resolve an unscoped PlatformIO dependency name and version.
 
+        Preserve a leading `^`, `~`, or `>=` when updating the version; strip `==` as an exact-version marker. Updates may move the version beyond the original range. Bare and `==` versions require a package containing that version; other supported operators require a package containing a version at least as high.
+
         Parameters:
             dependency (models.Dependency): Dependency reference containing the package name, requested version, and package type option.
 
         Returns:
-            models.Result | str | None: An update result when a newer version is available, an assignment string when the requested version remains selected, or `None` when the dependency cannot be resolved.
+            models.Result | str | None: An update result for a newer eligible version, or an assignment string for an equal or older selected version. With a preserved operator, return the original assignment if no eligible candidate is at least the requested version. Return `None` if the reference or package cannot be resolved, or an exact reference has no eligible candidate.
+
+        Raises:
+            packaging.version.InvalidVersion: If the requested version is invalid after removing a supported operator.
+            requests.exceptions.RequestException: If a registry search fails or returns invalid JSON; for operator searches, package request failures also propagate. Exact-version searches skip failed package requests.
+            ValueError: If a release timestamp cannot be parsed.
         """
         match = typing.cast(Name | None, self._name.fullmatch(dependency.value))
         if not match:
             return None
-        version = packaging.version.Version(match["version"])
-        data = self._request_search(dependency.option, match["name"], match["version"])
+        operator, version_ = self._operator(match["version"])
+        version = packaging.version.Version(version_)
+        data = (
+            self._request_search_version(dependency.option, match["name"], version_)
+            if len(operator) == 0
+            else self._request_search(dependency.option, match["name"], version_)
+        )
         if not data:
             return None
-        _version = self._parse(data, version)
-        if _version is None:
+        candidate = self._parse(data, version)
+        if len(operator) != 0 and (candidate is None or packaging.version.Version(candidate["name"]) < version):
+            return f"{dependency.option} = {dependency.value}"
+        if candidate is None:
             return None
-        value = f"{data['owner']['username']}/{data['name']} @ {_version['name']}"
-        if packaging.version.Version(_version["name"]) > version:
+        value = f"{data['owner']['username']}/{data['name']} @ {operator}{candidate['name']}"
+        if packaging.version.Version(candidate["name"]) > version:
             return models.Result(
                 body="\n".join(
                     self._body(
                         data["type"],
                         data["owner"]["username"],
                         data["name"],
-                        match["version"],
-                        _version["name"],
+                        version_,
+                        candidate["name"],
                     )
                 ),
                 package=f"{data['owner']['username']}/{data['name']}",
                 value=value,
-                version_from=match["version"].removeprefix("v"),
-                version_to=_version["name"].removeprefix("v"),
+                version_from=version_,
+                version_to=candidate["name"],
             )
         return f"{dependency.option} = {value}"
 
@@ -227,38 +252,48 @@ class Resolve:
         """
         Resolve a package reference and produce an update result or assignment.
 
+        Preserve a leading `^`, `~`, or `>=` when updating the version; strip `==` as an exact-version marker. Updates may move the version beyond the original range.
+
         Parameters:
             dependency (models.Dependency): Dependency option and package reference to resolve.
 
         Returns:
             models.Result: Update information when a newer eligible version is available.
-            str: Assignment using the resolved package version when no update is needed.
-            None: If the dependency reference does not match or no eligible version is found.
+            str: Assignment using an equal or older selected version. With a preserved operator, return the original assignment if no eligible candidate is at least the requested version.
+            None: If the dependency reference does not match, or an exact reference has no eligible version.
+
+        Raises:
+            packaging.version.InvalidVersion: If the requested version is invalid after removing a supported operator.
+            requests.exceptions.RequestException: If a registry request fails or its response is not valid JSON.
+            ValueError: If a release timestamp cannot be parsed.
         """
         match = typing.cast(Package | None, self._package.fullmatch(dependency.value))
         if not match:
             return None
-        version = packaging.version.Version(match["version"])
+        operator, version_ = self._operator(match["version"])
+        version = packaging.version.Version(version_)
         data = self._request_package(dependency.option, match["owner"], match["name"])
-        _version = self._parse(data, version)
-        if _version is None:
+        candidate = self._parse(data, version)
+        if len(operator) != 0 and (candidate is None or packaging.version.Version(candidate["name"]) < version):
+            return f"{dependency.option} = {dependency.value}"
+        if candidate is None:
             return None
-        value = f"{data['owner']['username']}/{data['name']} @ {_version['name']}"
-        if packaging.version.Version(_version["name"]) > version:
+        value = f"{data['owner']['username']}/{data['name']} @ {operator}{candidate['name']}"
+        if packaging.version.Version(candidate["name"]) > version:
             return models.Result(
                 body="\n".join(
                     self._body(
                         data["type"],
                         data["owner"]["username"],
                         data["name"],
-                        match["version"],
-                        _version["name"],
+                        version_,
+                        candidate["name"],
                     )
                 ),
                 package=f"{data['owner']['username']}/{data['name']}",
                 value=value,
-                version_from=match["version"].removeprefix("v"),
-                version_to=_version["name"].removeprefix("v"),
+                version_from=version_,
+                version_to=candidate["name"],
             )
         return f"{dependency.option} = {value}"
 
@@ -275,6 +310,20 @@ class Resolve:
             f"Bumps [{owner}/{name}](https://registry.platformio.org/{type_}/{owner_}/{name_}) from {version_from} to {version_to}.",
             f"- [Versions](https://registry.platformio.org/{type_}/{owner_}/{name_}/versions?version={version_})",
         ]
+
+    def _operator(self, version: str) -> tuple[str, str]:
+        """
+        Split a leading `^`, `~`, or `>=` from a version string.
+
+        Return the operator and remaining text without validating or trimming it. A leading `==` is removed and returns an empty operator. Strings containing a comma or lacking a recognized prefix are returned unchanged with an empty operator.
+        """
+        if "," not in version:
+            for operator in ("^", "~", ">="):
+                if version.startswith(operator):
+                    return operator, version.removeprefix(operator)
+            if version.startswith("=="):
+                return "", version.removeprefix("==")
+        return "", version
 
     def _parse(self, data: Data, version: packaging.version.Version) -> Version | None:
         """
@@ -346,7 +395,47 @@ class Resolve:
 
     def _request_search(self, option: str, name: str, version: str) -> Data | None:
         """
+        Search the registry for the first package with a version at least as high as requested.
+
+        Parameters:
+            option (str): Dependency option or registry category used to scope the search.
+            name (str): Package name to search for.
+            version (str): Inclusive minimum version, without a range operator.
+
+        Returns:
+            Data | None: Metadata for the first qualifying package in search order, or `None` after all search pages are exhausted. Invalid candidate versions are skipped; release cooldown and prerelease eligibility are not checked here.
+
+        Raises:
+            packaging.version.InvalidVersion: If the requested minimum version is invalid.
+            requests.exceptions.RequestException: If a search or package request fails or returns invalid JSON.
+        """
+        _type = self._type(option)
+        _version = packaging.version.Version(version)
+        search = typing.cast(Search, {"items": [], "limit": 50, "page": 0, "total": 1})
+        while search["page"] * search["limit"] < search["total"]:
+            search = typing.cast(
+                Search,
+                self._request(
+                    f"https://api.registry.platformio.org/v3/search?query=type:{_type}+name:%22{urllib.parse.quote(name, '')}%22&limit={search['limit']!s}{f'&page={(search["page"] + 1)!s}' if search['page'] else ''}"
+                ).json(),
+            )
+            for item in search["items"]:
+                data = self._request_package(item["type"], item["owner"]["username"], item["name"])
+                for _candidate in data["versions"]:
+                    try:
+                        if packaging.version.Version(_candidate["name"]) >= _version:
+                            return data
+                    except packaging.version.InvalidVersion:
+                        print(
+                            f"::debug::Invalid version: {item['owner']['username']}/{item['name']} {_candidate['name']}"
+                        )
+        return None
+
+    def _request_search_version(self, option: str, name: str, version: str) -> Data | None:
+        """
         Find package metadata for a specific version by searching the registry.
+
+        Return the first successful package lookup in search order. Failed package requests, including invalid JSON responses, are skipped; search request failures propagate.
 
         Parameters:
             option (str): Package type or API option used to scope the search.
@@ -355,6 +444,9 @@ class Resolve:
 
         Returns:
             Data | None: Metadata for the requested package version, or `None` if no matching package is found.
+
+        Raises:
+            requests.exceptions.RequestException: If a search request fails or returns invalid JSON.
         """
         _type = self._type(option)
         search = typing.cast(Search, {"items": [], "limit": 50, "page": 0, "total": 1})

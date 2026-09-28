@@ -10,11 +10,6 @@ A GitHub Action that checks `platformio.ini` for dependency updates and creates 
 * Support for custom platform-package versions
 * Pauses updates for inactive repositories after 3 months
 
-## Limitations
-
-* Dependencies must be pinned to a specific version
-* Version ranges are not supported
-
 ## Usage
 
 Create a workflow file such as:
