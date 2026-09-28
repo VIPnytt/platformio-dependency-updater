@@ -571,7 +571,7 @@ class Resolve:
             return None
         ball = tag[f"{match['variant']}ball_url"]
         owner, repo = self._parse_link(ball)
-        value = f"{'' if match['package'] is None else f'{match["package"]} @ '}https://github.com/{owner}/{repo}/{tag['name']}.{match['variant']} ; {tag['name']}"
+        value = f"{'' if match['package'] is None else f'{match["package"]} @ '}https://github.com/{owner}/{repo}/{match['variant']}ball/{tag['name']} ; {tag['name']}"
         return (
             models.Result(
                 body="\n".join(
