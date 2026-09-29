@@ -44,25 +44,25 @@ jobs:
 
 ### `cooldown`
 
-Defines a cooldown period for dependency updates, allowing updates to be delayed for a configurable number of days.
+Number of days to delay an update after a release is published.
 
-Default is `3` days. Ignored for Arduino and SourceForge dependencies, as neither provider exposes release dates.
+Defaults to `3` days. Ignored for Arduino and SourceForge dependencies, as neither provider exposes release dates.
 
 ### `labels`
 
-Specify your own labels for all pull requests raised. Multiple labels can be specified as a comma-separated list.
+Comma-separated list of labels to apply to created pull requests.
 
 Defaults to `dependencies,platformio`.
 
 ### `open-pull-requests-limit`
 
-Change the limit on the maximum number of pull requests for version updates open at any time.
+Maximum number of open pull requests permitted at any time.
 
-Default is `5` concurrent PRs.
+Defaults to `5`.
 
 ### `project-dir`
 
-Specify the path to project directory.
+Path to the directory containing `platformio.ini`.
 
 Defaults to repository root (`.`).
 
