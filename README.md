@@ -1,13 +1,14 @@
-# PlatformIO Dependency Updater
+# 🤖 PlatformIO Dependency Updater
 
 A GitHub Action that checks `platformio.ini` for dependency updates and creates pull requests when newer versions become available.
 
+**Supported providers:** PlatformIO Registry · GitHub · GitLab · Bitbucket · Espressif · Arduino · SourceForge
+
 ## Highlights
 
-* Multiple dependency sources; *Arduino*, *Bitbucket*, *Espressif*, *GitHub*, *GitLab*, *PlatformIO*, and *SourceForge*
-* Release notes included in the PR description, when available
+* Release notes link in the PR description, when available
 * Channel-aware pre-release handling
-* Support for custom platform-package versions
+* Configurable cooldown period for delaying fresh updates
 * Pauses updates for inactive repositories after 3 months
 
 ## Usage
@@ -36,32 +37,32 @@ jobs:
         uses: actions/checkout@v7
 
       - name: Check for dependency updates
-        uses: VIPnytt/platformio-dependency-updater@v1.0.2
+        uses: VIPnytt/platformio-dependency-updater@v1.0.3
 ```
 
 ## Options
 
 ### `cooldown`
 
-Defines a cooldown period for dependency updates, allowing updates to be delayed for a configurable number of days.
+Number of days to delay an update after a release is published.
 
-Default is `3` days.
+Defaults to `3` days. Ignored for Arduino and SourceForge dependencies, as neither provider exposes release dates.
 
 ### `labels`
 
-Specify your own labels for all pull requests raised. Multiple labels can be specified as a comma-separated list.
+Comma-separated list of labels to apply to created pull requests.
 
 Defaults to `dependencies,platformio`.
 
 ### `open-pull-requests-limit`
 
-Change the limit on the maximum number of pull requests for version updates open at any time.
+Maximum number of open pull requests permitted at any time.
 
-Default is `5` concurrent PRs.
+Defaults to `5`.
 
 ### `project-dir`
 
-Specify the path to project directory.
+Path to the directory containing `platformio.ini`.
 
 Defaults to repository root (`.`).
 
@@ -87,7 +88,7 @@ jobs:
         uses: actions/checkout@v7
 
       - name: Check for dependency updates
-        uses: VIPnytt/platformio-dependency-updater@v1.0.2
+        uses: VIPnytt/platformio-dependency-updater@v1.0.3
         with:
           cooldown: 3                     # days
           labels: dependencies,platformio # comma-separated list
@@ -99,25 +100,27 @@ jobs:
 
 ### Unexpected or outdated version proposed
 
-Upstream projects occasionally change versioning schemes (such as `pioarduino` moving from CalVer `2024.07.00` to SemVer `55.03.312`), or actively maintain multiple release lines at once (like `esp-idf` maintaining `5.x.x` alongside `6.x.x`).
+Upstream projects occasionally change versioning schemes, or actively maintain multiple release lines at once.
 
 Prioritizing version progression over release dates ensures projects on stable branches continue receiving backports and security fixes without losing their upgrade path. A natural trade-off is that older historical releases with high numerical values, like CalVer tags, can initially appear as candidate upgrades.
 
 Close pull requests for unwanted releases. The action records the closure and will not propose that release again, but will continue checking on schedule and propose an update once a newer release appears upstream.
 
-### Dependency cannot be resolved
+### Indeterminate dependencies
 
-Available updates are determined by comparing the current version with versions reported by the provider. Some dependency URLs do not contain enough information to determine the current version.
+The updater requires a baseline version to calculate available updates. If a baseline cannot be determined from the dependency definition, it will be reported as *Indeterminate* in the workflow summary.
 
-For example, a commit SHA identifies a specific revision, but it does not indicate which release or tag it belongs to. In these cases, add the current version as an inline comment:
+It most commonly occurs when a dependency is intentionally unpinned (e.g., a bare PlatformIO Registry package) or uses an opaque format (e.g., a Git commit SHA or floating branch).
+
+To track these dependencies, explicitly supply a baseline version. Pin the package directly, or for opaque URLs, append the version as an inline comment as shown below. The updater will parse the comment and use it as the baseline for comparison.
 
 ```ini
-lib_deps = https://github.com/example/library/archive/<commit>.tar.gz ; v1.0.0
+platform = https://api.github.com/repos/pioarduino/platform-espressif32/tarball/cbc3349061987c28bc1b48d43d473e70c5ae04ed ; 55.03.39
+platform_packages =
+    framework-arduinoespressif32 @ https://api.github.com/repos/espressif/arduino-esp32/tarball/5b5114c832dfe309f3e73879d2ac8922c8276559 ; 3.3.9
+lib_deps =
+    bblanchon/ArduinoJson @ 7.4.3
 ```
-
-The same applies to other dependency formats where the version cannot be directly extracted from the URL.
-
-If a dependency cannot be resolved, it will be reported as an unresolved dependency in the workflow summary. This usually indicates that a version comment is required or that the dependency format is not currently supported.
 
 ### Pull requests does not appear
 

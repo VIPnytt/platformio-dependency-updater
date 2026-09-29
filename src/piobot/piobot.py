@@ -345,5 +345,5 @@ class Piobot:
         """Report unresolved dependencies using GitHub Actions error annotations."""
         for dependency in self.dependencies:
             print(
-                f"::error file={self.ini!s},line={dependency.line},title=Unresolved::{dependency.option} = {dependency.value.split(';', 1)[0].rstrip()}"
+                f"::error file={self.ini!s},line={dependency.line},title=Indeterminate::{dependency.option} = {dependency.value.split(';', 1)[0].rstrip()}"
             )
