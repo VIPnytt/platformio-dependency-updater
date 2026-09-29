@@ -81,6 +81,8 @@ class TagID(typing.TypedDict):
 
 class Resolve:
     cooldown: datetime.timedelta
+    _api_commit: re.Pattern[str]
+    _api_tag: re.Pattern[str]
     _archive_commit: re.Pattern[str]
     _archive_tag: re.Pattern[str]
     _ball_commit: re.Pattern[str]
@@ -97,6 +99,12 @@ class Resolve:
                 cooldown (datetime.timedelta): Minimum age required for a release or tag to be eligible.
         """
         self.cooldown = cooldown
+        self._api_commit = re.compile(
+            r"^(?:(?P<package>(?:[^/\s]+/)?[^/\s]+)?\s*@\s*)?https://api\.github\.com/repos/(?P<name>[^/\s]+/[^/\s]+)/(?P<variant>tar|zip)ball/(?P<commit>[0-9a-f]{40})\s*;\s*(?P<tag>\S+)$"
+        )
+        self._api_tag = re.compile(
+            r"^(?:(?P<package>(?:[^/\s]+/)?[^/\s]+)?\s*@\s*)?https://api\.github\.com/repos/(?P<name>[^/\s]+/[^/\s]+)/(?P<variant>tar|zip)ball/(?:refs/tags/)?(?P<tag>[^/\s]+)(?:\s*;.*)?$"
+        )
         self._archive_commit = re.compile(
             r"^(?:(?P<package>(?:[^/\s]+/)?[^/\s]+)?\s*@\s*)?https://github\.com/(?P<name>[^/\s]+/[^/\s]+)/archive/(?P<commit>[0-9a-f]{40})\.(?P<variant>tar\.gz|zip)\s*;\s*(?P<tag>\S+)$"
         )
@@ -104,10 +112,10 @@ class Resolve:
             r"^(?:(?P<package>(?:[^/\s]+/)?[^/\s]+)?\s*@\s*)?https://github\.com/(?P<name>[^/\s]+/[^/\s]+)/archive/refs/tags/(?P<tag>[^/\s]+)\.(?P<variant>tar\.gz|zip)(?:\s*;.*)?$"
         )
         self._ball_commit = re.compile(
-            r"^(?:(?P<package>(?:[^/\s]+/)?[^/\s]+)?\s*@\s*)?https://api\.github\.com/repos/(?P<name>[^/\s]+/[^/\s]+)/(?P<variant>tar|zip)ball/(?P<commit>[0-9a-f]{40})\s*;\s*(?P<tag>\S+)$"
+            r"^(?:(?P<package>(?:[^/\s]+/)?[^/\s]+)?\s*@\s*)?https://github\.com/(?P<name>[^/\s]+/[^/\s]+)/(?P<variant>tar|zip)ball/(?P<commit>[0-9a-f]{40})\s*;\s*(?P<tag>\S+)$"
         )
         self._ball_tag = re.compile(
-            r"^(?:(?P<package>(?:[^/\s]+/)?[^/\s]+)?\s*@\s*)?https://api\.github\.com/repos/(?P<name>[^/\s]+/[^/\s]+)/(?P<variant>tar|zip)ball/(?:refs/tags/)?(?P<tag>[^/\s]+)(?:\s*;.*)?$"
+            r"^(?:(?P<package>(?:[^/\s]+/)?[^/\s]+)?\s*@\s*)?https://github\.com/(?P<name>[^/\s]+/[^/\s]+)/(?P<variant>tar|zip)ball/(?:refs/tags/)?(?P<tag>[^/\s]+)(?:\s*;.*)?$"
         )
         self._download = re.compile(
             r"^(?:(?P<package>(?:[^/\s]+/)?[^/\s]+)?\s*@\s*)?https://github\.com/(?P<name>[^/\s]+/[^/\s]+)/releases/download/(?P<tag>[^/\s]+)/(?P<asset>[^/\s]+\.(?:tar|tar\.gz|tgz|zip))(?:\s*;.*)?$"
@@ -238,6 +246,43 @@ class Resolve:
             )
         return None
 
+    def release_tag_api(self, dependency: models.Dependency) -> models.Result | str | None:
+        """
+        Resolve a GitHub tarball or zipball dependency to a newer release tag.
+
+        Parameters:
+                dependency (models.Dependency): Dependency value containing a GitHub ball URL and tag.
+
+        Returns:
+                models.Result | str | None: A release update result or formatted dependency value, or `None` when the value does not match or no suitable release is found.
+        """
+        match = typing.cast(MatchTag | None, self._api_tag.fullmatch(dependency.value))
+        if not match:
+            return None
+        release = self._request_release(match["name"], match["tag"])
+        if not release:
+            return None
+        ball = release[f"{match['variant']}ball_url"]
+        owner, repo = self._parse_link(ball)
+        value = f"{'' if match['package'] is None else f'{match["package"]} @ '}https://github.com/{owner}/{repo}/{match['variant']}ball/{release['tag_name']} ; {release['tag_name']}"
+        return (
+            models.Result(
+                body="\n".join(
+                    [
+                        f"Bumps [{owner}/{repo}](https://github.com/{owner}/{repo}) from {match['tag']} to {release['tag_name']}.",
+                        f"- [Release notes]({release['html_url']})",
+                        f"- [Compare changes](https://github.com/{owner}/{repo}/compare/{match['tag']}...{release['tag_name']})",
+                    ]
+                ),
+                package=f"{owner}/{repo}",
+                value=value,
+                version_from=match["tag"].removeprefix("v"),
+                version_to=release["tag_name"].removeprefix("v"),
+            )
+            if packaging.version.Version(release["tag_name"]) > packaging.version.Version(match["tag"])
+            else f"{dependency.option} = {value}"
+        )
+
     def release_tag_ball(self, dependency: models.Dependency) -> models.Result | str | None:
         """
         Resolve a GitHub tarball or zipball dependency to a newer release tag.
@@ -254,9 +299,8 @@ class Resolve:
         release = self._request_release(match["name"], match["tag"])
         if not release:
             return None
-        ball = release[f"{match['variant']}ball_url"]
-        owner, repo = self._parse_link(ball)
-        value = f"{'' if match['package'] is None else f'{match["package"]} @ '}{ball} ; {release['tag_name']}"
+        owner, repo = self._parse_link(release[f"{match['variant']}ball_url"])
+        value = f"{'' if match['package'] is None else f'{match["package"]} @ '}https://github.com/{owner}/{repo}/{match['variant']}ball/{release['tag_name']} ; {release['tag_name']}"
         return (
             models.Result(
                 body="\n".join(
@@ -314,7 +358,7 @@ class Resolve:
             else f"{dependency.option} = {value}"
         )
 
-    def release_tag_commit_ball(self, dependency: models.Dependency) -> models.Result | str | None:
+    def release_tag_commit_api(self, dependency: models.Dependency) -> models.Result | str | None:
         """
         Resolve a commit-based API tarball or zipball dependency to a newer GitHub release.
 
@@ -324,7 +368,7 @@ class Resolve:
         Returns:
                 models.Result | str | None: A release update result or formatted dependency assignment, or `None` when the value does not match or no suitable release is found.
         """
-        match = typing.cast(MatchCommit | None, self._ball_commit.fullmatch(dependency.value))
+        match = typing.cast(MatchCommit | None, self._api_commit.fullmatch(dependency.value))
         if not match:
             return None
         release = self._request_release(match["name"], match["tag"])
@@ -333,6 +377,34 @@ class Resolve:
         owner, repo = self._parse_link(release["url"])
         commit = self._request_tag_id(owner, repo, release["tag_name"])["object"]["sha"]
         value = f"{'' if match['package'] is None else f'{match["package"]} @ '}https://api.github.com/repos/{owner}/{repo}/{match['variant']}ball/{commit} ; {release['tag_name']}"
+        return (
+            models.Result(
+                body="\n".join(
+                    [
+                        f"Bumps [{owner}/{repo}](https://github.com/{owner}/{repo}) from {match['tag']} to {release['tag_name']}.",
+                        f"- [Release notes]({release['html_url']})",
+                        f"- [Compare changes](https://github.com/{owner}/{repo}/compare/{match['commit']}...{commit})",
+                    ]
+                ),
+                package=f"{owner}/{repo}",
+                value=value,
+                version_from=match["tag"].removeprefix("v"),
+                version_to=release["tag_name"].removeprefix("v"),
+            )
+            if packaging.version.Version(release["tag_name"]) > packaging.version.Version(match["tag"])
+            else f"{dependency.option} = {value}"
+        )
+
+    def release_tag_commit_ball(self, dependency: models.Dependency) -> models.Result | str | None:
+        match = typing.cast(MatchCommit | None, self._ball_commit.fullmatch(dependency.value))
+        if not match:
+            return None
+        release = self._request_release(match["name"], match["tag"])
+        if not release:
+            return None
+        owner, repo = self._parse_link(release["url"])
+        commit = self._request_tag_id(owner, repo, release["tag_name"])["object"]["sha"]
+        value = f"{'' if match['package'] is None else f'{match["package"]} @ '}https://github.com/{owner}/{repo}/{match['variant']}ball/{commit} ; {release['tag_name']}"
         return (
             models.Result(
                 body="\n".join(
@@ -428,6 +500,46 @@ class Resolve:
             else f"{dependency.option} = {value}"
         )
 
+    def tag_api(self, dependency: models.Dependency) -> models.Result | str | None:
+        """
+        Resolve a GitHub tarball or zipball dependency to a newer compatible tag.
+
+        Parameters:
+            dependency (models.Dependency): Dependency containing the GitHub ball URL and update option.
+
+        Returns:
+            models.Result: Update details when a newer tag is found.
+            str: Formatted dependency assignment when the resolved tag is not newer.
+            None: If the dependency format is unsupported or no suitable tag is found.
+        """
+        match = typing.cast(MatchTag | None, self._api_tag.fullmatch(dependency.value))
+        if not match:
+            return None
+        version = packaging.version.Version(match["tag"])
+        tag = self._request_tag(match["name"], version)
+        if not tag:
+            return None
+        ball = tag[f"{match['variant']}ball_url"]
+        owner, repo = self._parse_link(ball)
+        value = f"{'' if match['package'] is None else f'{match["package"]} @ '}https://github.com/{owner}/{repo}/{match['variant']}ball/{tag['name']} ; {tag['name']}"
+        return (
+            models.Result(
+                body="\n".join(
+                    [
+                        f"Bumps [{owner}/{repo}](https://github.com/{owner}/{repo}) from {match['tag']} to {tag['name']}.",
+                        f"- [Tag](https://github.com/{owner}/{repo}/releases/tag/{tag['name']})",
+                        f"- [Compare changes](https://github.com/{owner}/{repo}/compare/{match['tag']}...{tag['name']})",
+                    ]
+                ),
+                package=f"{owner}/{repo}",
+                value=value,
+                version_from=match["tag"].removeprefix("v"),
+                version_to=tag["name"].removeprefix("v"),
+            )
+            if packaging.version.Version(tag["name"]) > version
+            else f"{dependency.option} = {value}"
+        )
+
     def tag_ball(self, dependency: models.Dependency) -> models.Result | str | None:
         """
         Resolve a GitHub tarball or zipball dependency to a newer compatible tag.
@@ -447,9 +559,8 @@ class Resolve:
         tag = self._request_tag(match["name"], version)
         if not tag:
             return None
-        ball = tag[f"{match['variant']}ball_url"]
-        owner, repo = self._parse_link(ball)
-        value = f"{'' if match['package'] is None else f'{match["package"]} @ '}{ball} ; {tag['name']}"
+        owner, repo = self._parse_link(tag[f"{match['variant']}ball_url"])
+        value = f"{'' if match['package'] is None else f'{match["package"]} @ '}https://github.com/{owner}/{repo}/{match['variant']}ball/{tag['name']} ; {tag['name']}"
         return (
             models.Result(
                 body="\n".join(
@@ -505,6 +616,45 @@ class Resolve:
             else f"{dependency.option} = {value}"
         )
 
+    def tag_commit_api(self, dependency: models.Dependency) -> models.Result | str | None:
+        """
+        Resolve a commit-based GitHub tarball or zipball dependency to a newer tag.
+
+        Parameters:
+                dependency (models.Dependency): Dependency containing the GitHub ball URL and version tag.
+
+        Returns:
+                models.Result: Update details when a newer tag is available.
+                str: Formatted dependency replacement when no newer tag is available.
+                None: If the dependency does not match the supported format or no tag is found.
+        """
+        match = typing.cast(MatchCommit | None, self._api_commit.fullmatch(dependency.value))
+        if not match:
+            return None
+        version = packaging.version.Version(match["tag"])
+        tag = self._request_tag(match["name"], version)
+        if not tag:
+            return None
+        owner, repo = self._parse_link(tag["commit"]["url"])
+        value = f"{'' if match['package'] is None else f'{match["package"]} @ '}https://api.github.com/repos/{owner}/{repo}/{match['variant']}ball/{tag['commit']['sha']} ; {tag['name']}"
+        return (
+            models.Result(
+                body="\n".join(
+                    [
+                        f"Bumps [{owner}/{repo}](https://github.com/{owner}/{repo}) from {match['tag']} to {tag['name']}.",
+                        f"- [Tag](https://github.com/{owner}/{repo}/releases/tag/{tag['name']})",
+                        f"- [Compare changes](https://github.com/{owner}/{repo}/compare/{match['commit']}...{tag['commit']['sha']})",
+                    ]
+                ),
+                package=f"{owner}/{repo}",
+                value=value,
+                version_from=match["tag"].removeprefix("v"),
+                version_to=tag["name"].removeprefix("v"),
+            )
+            if packaging.version.Version(tag["name"]) > version
+            else f"{dependency.option} = {value}"
+        )
+
     def tag_commit_ball(self, dependency: models.Dependency) -> models.Result | str | None:
         """
         Resolve a commit-based GitHub tarball or zipball dependency to a newer tag.
@@ -525,7 +675,7 @@ class Resolve:
         if not tag:
             return None
         owner, repo = self._parse_link(tag["commit"]["url"])
-        value = f"{'' if match['package'] is None else f'{match["package"]} @ '}https://api.github.com/repos/{owner}/{repo}/{match['variant']}ball/{tag['commit']['sha']} ; {tag['name']}"
+        value = f"{'' if match['package'] is None else f'{match["package"]} @ '}https://github.com/{owner}/{repo}/{match['variant']}ball/{tag['commit']['sha']} ; {tag['name']}"
         return (
             models.Result(
                 body="\n".join(

@@ -155,16 +155,20 @@ class Piobot:
         """
         resolve = github.Resolve(self.cooldown)
         for description, handler in {
+            "release tag commit api": resolve.release_tag_commit_api,
             "release tag commit archive": resolve.release_tag_commit_archive,
             "release tag commit ball": resolve.release_tag_commit_ball,
             "release tag commit git": resolve.release_commit_git,
+            "tag commit api": resolve.tag_commit_api,
             "tag commit archive": resolve.tag_commit_archive,
             "tag commit ball": resolve.tag_commit_ball,
             "tag commit git": resolve.tag_commit_git,
+            "release tag api": resolve.release_tag_api,
             "release tag asset": resolve.release_tag_asset,
             "release tag archive": resolve.release_tag_archive,
             "release tag ball": resolve.release_tag_ball,
             "release tag git": resolve.release_tag_git,
+            "tag api": resolve.tag_api,
             "tag archive": resolve.tag_archive,
             "tag ball": resolve.tag_ball,
             "tag git": resolve.tag_git,
