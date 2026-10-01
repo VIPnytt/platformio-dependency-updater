@@ -7,7 +7,7 @@ import github.Consts
 @dataclasses.dataclass(frozen=True)
 class Config:
     TIMEOUT: int = github.Consts.DEFAULT_TIMEOUT
-    USER_AGENT: str = "platformio-dependency-updater (+https://github.com/VIPnytt/platformio-dependency-updater)"
+    USER_AGENT: str = "platformio-dependency-updater/1.1.0 (+https://github.com/VIPnytt/platformio-dependency-updater)"
 
 
 class Option(enum.StrEnum):
