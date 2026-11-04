@@ -307,7 +307,7 @@ class Resolve:
         name_ = urllib.parse.quote(name, "")
         version_ = urllib.parse.quote(version_to, "")
         return [
-            f"Bumps [{owner}/{name}](https://registry.platformio.org/{type_}/{owner_}/{name_}) from {version_from} to {version_to}.",
+            f"Bumps [{owner}/{name}](https://registry.platformio.org/{type_}/{owner_}/{name_}?version={version_}) from {version_from} to {version_to}.",
             f"- [Versions](https://registry.platformio.org/{type_}/{owner_}/{name_}/versions?version={version_})",
         ]
 
