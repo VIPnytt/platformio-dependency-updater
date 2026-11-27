@@ -7,7 +7,7 @@ classifiers = ["Private :: Do Not Upload"]
 requires-python = ">=3.12"
 dependencies = [
     "gitpython==3.2.1",
-    "packaging==26.3",
+    "packaging==26.4",
     "pygithub==2.10.0",
     "requests==2.34.2",
 ]
